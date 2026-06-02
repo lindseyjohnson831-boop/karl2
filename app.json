@@ -27,7 +27,6 @@
       "package": "com.karlcheck.app"
     },
     "plugins": [
-      "react-native-reanimated",
       "expo-image-picker"
     ]
   }
