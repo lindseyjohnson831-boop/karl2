@@ -1,0 +1,3068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>KarlCheck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;500;600;700&family=Patrick+Hand&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  body { font-family: 'Patrick Hand', system-ui, sans-serif; }
+  #root { height: 100%; }
+  button { font-family: inherit; }
+
+  @keyframes kc-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
+  .kc-livedot { width: 7px; height: 7px; border-radius: 999px; background: #e0445b; display: inline-block;
+    box-shadow: 0 0 0 0 rgba(224,68,91,0.5); animation: kc-pulse 1.6s ease-in-out infinite; }
+
+  @keyframes kc-shimmer-move { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+  .kc-shimmer { position: absolute; top: 0; left: 0; bottom: 0; width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+    animation: kc-shimmer-move 2.6s linear infinite; pointer-events: none; }
+
+  @keyframes kc-ringpulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+    100% { box-shadow: 0 0 0 16px transparent; } }
+  .kc-ring { animation: kc-ringpulse 1.7s ease-out infinite; }
+
+  .kc-hit { background: transparent; border: none; cursor: pointer; transition: background .15s; }
+  .kc-hit:hover { background: color-mix(in srgb, var(--accent) 16%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+  .kc-badge:active { transform: translate(-50%,-50%) scale(0.93) !important; }
+  .kc-badge:hover { z-index: 28 !important; }
+
+  ::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script>
+    window.TWEAK_DEFAULTS = {
+      "palette": ["#eae8e4","#f6f3ee","#34293a","#863a5c","#c25c6e"],
+      "wobble": true,
+      "panel": "Guide",
+      "unit": "F"
+    };
+  </script>
+
+  <script type="text/babel">
+
+/* BEGIN USAGE */
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+// Exports (to window): useTweaks, TweaksPanel, TweakSection, TweakRow, TweakSlider,
+//   TweakToggle, TweakRadio, TweakSelect, TweakText, TweakNumber, TweakColor, TweakButton.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakColor  label="Palette" value={t.palette}
+//                        options={[['#D97757', '#29261b', '#f6f4ef'],
+//                                  ['#475569', '#0f172a', '#f1f5f9']]}
+//                        onChange={(v) => setTweak('palette', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// TweakRadio is the segmented control for 2–3 short options (auto-falls-back to
+// TweakSelect past ~16/~10 chars per label); reach for TweakSelect directly when
+// options are many or long. For color tweaks always curate 3-4 options rather than
+// a free picker; an option can also be a whole 2–5 color palette (the stored value
+// is the array). The Tweak* controls are a floor, not a ceiling — build custom
+// controls inside the panel if a tweak calls for UI they don't cover.
+/* END USAGE */
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;box-sizing:border-box;min-width:0;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
+    // can react — the parent message only reaches the host, not peers.
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-omelette-chrome=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  // Segments wrap mid-word once per-segment width runs out. The track is
+  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
+  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
+  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
+  // back to a dropdown rather than wrap.
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    // <select> emits strings — map back to the original option value so the
+    // fallback stays type-preserving (numbers, booleans) like the segment path.
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
+// read on both #111 and #fafafa without per-option configuration. Hex input
+// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+// TweakColor — curated color/palette picker. Each option is either a single
+// hex string or an array of 1-5 hex strings; the card adapts — a lone color
+// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
+// rest stacked in a sharp column on the right. onChange emits the
+// option in the shape it was passed (string stays string, array stays array).
+// Without options it falls back to the native color input for back-compat.
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  // Native <input type=color> emits lowercase hex per the HTML spec, so
+  // compare case-insensitively. String() guards JSON.stringify(undefined),
+  // which returns the primitive undefined (no .toLowerCase).
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+  </script>
+
+  <script type="text/babel">
+
+/* BEGIN USAGE */
+// iOS.jsx — Simplified iOS 26 (Liquid Glass) device frame
+// Based on the iOS 26 UI Kit + Figma status bar spec. No assets, no deps.
+// Exports (to window): IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard
+//
+// Usage — wrap your screen content in <IOSDevice> to get the bezel, status bar
+// and home indicator (props: title, dark, keyboard):
+//
+//   <IOSDevice title="Settings">
+//     ...your screen content...
+//   </IOSDevice>
+//   <IOSDevice dark title="Search" keyboard>…</IOSDevice>
+/* END USAGE */
+
+// ─────────────────────────────────────────────────────────────
+// Status bar
+// ─────────────────────────────────────────────────────────────
+function IOSStatusBar({ dark = false, time = '9:41' }) {
+  const c = dark ? '#fff' : '#000';
+  return (
+    <div style={{
+      display: 'flex', gap: 154, alignItems: 'center', justifyContent: 'center',
+      padding: '21px 24px 19px', boxSizing: 'border-box',
+      position: 'relative', zIndex: 20, width: '100%',
+    }}>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 1.5 }}>
+        <span style={{
+          fontFamily: '-apple-system, "SF Pro", system-ui', fontWeight: 590,
+          fontSize: 17, lineHeight: '22px', color: c,
+        }}>{time}</span>
+      </div>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, paddingTop: 1, paddingRight: 1 }}>
+        <svg width="19" height="12" viewBox="0 0 19 12">
+          <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill={c}/>
+          <rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill={c}/>
+          <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill={c}/>
+          <rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill={c}/>
+        </svg>
+        <svg width="17" height="12" viewBox="0 0 17 12">
+          <path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill={c}/>
+          <path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill={c}/>
+          <circle cx="8.5" cy="10.5" r="1.5" fill={c}/>
+        </svg>
+        <svg width="27" height="13" viewBox="0 0 27 13">
+          <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke={c} strokeOpacity="0.35" fill="none"/>
+          <rect x="2" y="2" width="20" height="9" rx="2" fill={c}/>
+          <path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill={c} fillOpacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Liquid glass pill — blur + tint + shine
+// ─────────────────────────────────────────────────────────────
+function IOSGlassPill({ children, dark = false, style = {} }) {
+  return (
+    <div style={{
+      height: 44, minWidth: 44, borderRadius: 9999,
+      position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: dark
+        ? '0 2px 6px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.2)'
+        : '0 1px 3px rgba(0,0,0,0.07), 0 3px 10px rgba(0,0,0,0.06)',
+      ...style,
+    }}>
+      {/* blur + tint */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.28)' : 'rgba(255,255,255,0.5)',
+      }} />
+      {/* shine */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15), inset -1px -1px 1px rgba(255,255,255,0.08)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Navigation bar — glass pills + large title
+// ─────────────────────────────────────────────────────────────
+function IOSNavBar({ title = 'Title', dark = false, trailingIcon = true }) {
+  const muted = dark ? 'rgba(255,255,255,0.6)' : '#404040';
+  const text = dark ? '#fff' : '#000';
+  const pillIcon = (content) => (
+    <IOSGlassPill dark={dark}>
+      <div style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {content}
+      </div>
+    </IOSGlassPill>
+  );
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 10,
+      paddingTop: 62, paddingBottom: 10, position: 'relative', zIndex: 5,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        {/* back chevron */}
+        {pillIcon(
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" style={{ marginLeft: -1 }}>
+            <path d="M10 2L2 10l8 8" stroke={muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        {/* trailing ellipsis */}
+        {trailingIcon && pillIcon(
+          <svg width="22" height="6" viewBox="0 0 22 6">
+            <circle cx="3" cy="3" r="2.5" fill={muted}/>
+            <circle cx="11" cy="3" r="2.5" fill={muted}/>
+            <circle cx="19" cy="3" r="2.5" fill={muted}/>
+          </svg>
+        )}
+      </div>
+      {/* large title */}
+      <div style={{
+        padding: '0 16px',
+        fontFamily: '-apple-system, system-ui',
+        fontSize: 34, fontWeight: 700, lineHeight: '41px',
+        color: text, letterSpacing: 0.4,
+      }}>{title}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Grouped list (inset card, r:26) + row (52px)
+// ─────────────────────────────────────────────────────────────
+function IOSListRow({ title, detail, icon, chevron = true, isLast = false, dark = false }) {
+  const text = dark ? '#fff' : '#000';
+  const sec = dark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
+  const ter = dark ? 'rgba(235,235,245,0.3)' : 'rgba(60,60,67,0.3)';
+  const sep = dark ? 'rgba(84,84,88,0.65)' : 'rgba(60,60,67,0.12)';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', minHeight: 52,
+      padding: '0 16px', position: 'relative',
+      fontFamily: '-apple-system, system-ui', fontSize: 17,
+      letterSpacing: -0.43,
+    }}>
+      {icon && (
+        <div style={{
+          width: 30, height: 30, borderRadius: 7, background: icon,
+          marginRight: 12, flexShrink: 0,
+        }} />
+      )}
+      <div style={{ flex: 1, color: text }}>{title}</div>
+      {detail && <span style={{ color: sec, marginRight: 6 }}>{detail}</span>}
+      {chevron && (
+        <svg width="8" height="14" viewBox="0 0 8 14" style={{ flexShrink: 0 }}>
+          <path d="M1 1l6 6-6 6" stroke={ter} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      {!isLast && (
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0,
+          left: icon ? 58 : 16, height: 0.5, background: sep,
+        }} />
+      )}
+    </div>
+  );
+}
+
+function IOSList({ header, children, dark = false }) {
+  const hc = dark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
+  const bg = dark ? '#1C1C1E' : '#fff';
+  return (
+    <div>
+      {header && (
+        <div style={{
+          fontFamily: '-apple-system, system-ui', fontSize: 13,
+          color: hc, textTransform: 'uppercase',
+          padding: '8px 36px 6px', letterSpacing: -0.08,
+        }}>{header}</div>
+      )}
+      <div style={{
+        background: bg, borderRadius: 26,
+        margin: '0 16px', overflow: 'hidden',
+      }}>{children}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Device frame
+// ─────────────────────────────────────────────────────────────
+function IOSDevice({
+  children, width = 402, height = 874, dark = false,
+  title, keyboard = false,
+}) {
+  return (
+    <div style={{
+      width, height, borderRadius: 48, overflow: 'hidden',
+      position: 'relative', background: dark ? '#000' : '#F2F2F7',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+    }}>
+      {/* dynamic island */}
+      <div style={{
+        position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+        width: 126, height: 37, borderRadius: 24, background: '#000', zIndex: 50,
+      }} />
+      {/* status bar (absolute) */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <IOSStatusBar dark={dark} />
+      </div>
+      {/* nav + content */}
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {title !== undefined && <IOSNavBar title={title} dark={dark} />}
+        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+        {keyboard && <IOSKeyboard dark={dark} />}
+      </div>
+      {/* home indicator — always on top */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 60,
+        height: 34, display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+        paddingBottom: 8, pointerEvents: 'none',
+      }}>
+        <div style={{
+          width: 139, height: 5, borderRadius: 100,
+          background: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Keyboard — iOS 26 liquid glass
+// ─────────────────────────────────────────────────────────────
+function IOSKeyboard({ dark = false }) {
+  const glyph = dark ? 'rgba(255,255,255,0.7)' : '#595959';
+  const sugg = dark ? 'rgba(255,255,255,0.6)' : '#333';
+  const keyBg = dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)';
+
+  // special-key icons
+  const icons = {
+    shift: <svg width="19" height="17" viewBox="0 0 19 17"><path d="M9.5 1L1 9.5h4.5V16h8V9.5H18L9.5 1z" fill={glyph}/></svg>,
+    del: <svg width="23" height="17" viewBox="0 0 23 17"><path d="M7 1h13a2 2 0 012 2v11a2 2 0 01-2 2H7l-6-7.5L7 1z" fill="none" stroke={glyph} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 5l7 7M17 5l-7 7" stroke={glyph} strokeWidth="1.6" strokeLinecap="round"/></svg>,
+    ret: <svg width="20" height="14" viewBox="0 0 20 14"><path d="M18 1v6H4m0 0l4-4M4 7l4 4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  };
+
+  const key = (content, { w, flex, ret, fs = 25, k } = {}) => (
+    <div key={k} style={{
+      height: 42, borderRadius: 8.5,
+      flex: flex ? 1 : undefined, width: w, minWidth: 0,
+      background: ret ? '#08f' : keyBg,
+      boxShadow: '0 1px 0 rgba(0,0,0,0.075)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: '-apple-system, "SF Compact", system-ui',
+      fontSize: fs, fontWeight: 458, color: ret ? '#fff' : glyph,
+    }}>{content}</div>
+  );
+
+  const row = (keys, pad = 0) => (
+    <div style={{ display: 'flex', gap: 6.5, justifyContent: 'center', padding: `0 ${pad}px` }}>
+      {keys.map(l => key(l, { flex: true, k: l }))}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 15, borderRadius: 27, overflow: 'hidden',
+      padding: '11px 0 2px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      boxShadow: dark
+        ? '0 -2px 20px rgba(0,0,0,0.09)'
+        : '0 -1px 6px rgba(0,0,0,0.018), 0 -3px 20px rgba(0,0,0,0.012)',
+    }}>
+      {/* liquid glass bg — same recipe as nav pills */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.14)' : 'rgba(255,255,255,0.25)',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* autocorrect bar */}
+      <div style={{
+        display: 'flex', gap: 20, alignItems: 'center',
+        padding: '8px 22px 13px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {['"The"', 'the', 'to'].map((w, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <div style={{ width: 1, height: 25, background: '#ccc', opacity: 0.3 }} />}
+            <div style={{
+              flex: 1, textAlign: 'center',
+              fontFamily: '-apple-system, system-ui', fontSize: 17,
+              color: sugg, letterSpacing: -0.43, lineHeight: '22px',
+            }}>{w}</div>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* key layout */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 13,
+        padding: '0 6.5px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {row(['q','w','e','r','t','y','u','i','o','p'])}
+        {row(['a','s','d','f','g','h','j','k','l'], 20)}
+        <div style={{ display: 'flex', gap: 14.25, alignItems: 'center' }}>
+          {key(icons.shift, { w: 45, k: 'shift' })}
+          <div style={{ display: 'flex', gap: 6.5, flex: 1 }}>
+            {['z','x','c','v','b','n','m'].map(l => key(l, { flex: true, k: l }))}
+          </div>
+          {key(icons.del, { w: 45, k: 'del' })}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {key('ABC', { w: 92.25, fs: 18, k: 'abc' })}
+          {key('', { flex: true, k: 'space' })}
+          {key(icons.ret, { w: 92.25, ret: true, k: 'ret' })}
+        </div>
+      </div>
+
+      {/* bottom spacer (emoji+mic area, icons omitted) */}
+      <div style={{ height: 56, width: '100%', position: 'relative' }} />
+    </div>
+  );
+}
+
+Object.assign(window, {
+  IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard,
+});
+
+  </script>
+
+  <script>
+/* KarlCheck — neighborhood data + hotspot coordinates (v2).
+   Matches the 23 simplified districts traced in uploads/Photo-339bb54a.svg.
+   x / y are PERCENT of the map image (2744 x 1568), anchored on each district's center.
+   status: one of sun | partly | mist | karl | wind | rain | night
+   karlScore: 0 (crisp & clear) .. 100 (full Karl, can't see your hand)
+*/
+window.KARL_CITY = {
+  name: "San Francisco",
+  // citywide verdict shown in header — recomputed from neighborhoods at runtime
+  asOf: "9:41 AM",
+};
+
+window.KARL_HOODS = [
+  { id: "presidio",         name: "Presidio",          x: 40.5, y: 29.3, status: "mist",   temp: 56, wind: 17, vis: 1.8, score: 62, cams: 6,  host: "Inspiration Pt. cam",   blurb: "Forest + fog = my favorite cologne." },
+  { id: "marina",           name: "Marina",            x: 52.3, y: 26.0, status: "partly", temp: 60, wind: 17, vis: 4.5, score: 43, cams: 12, host: "Crissy Field beach cam",  liveUrl: "https://parksconservancy.siteproxy.net/Crissy%20Beach/ctl.html", blurb: "Sun now, wall of me rolling in by 5. Classic." },
+  { id: "fishermans",       name: "Fisherman's Wharf", x: 59.7, y: 24.2, status: "partly", temp: 60, wind: 16, vis: 5.0, score: 41, cams: 9,  host: "EarthCam · SF Bayfront", liveUrl: "https://www.earthcam.com/usa/california/sanfrancisco/?cam=rowingclub", embed: false, poster: "project/assets/fishermans-cam.png", blurb: "Briny and brisk. The sea lions don't mind me." },
+  { id: "north-beach",      name: "North Beach",       x: 63.4, y: 27.5, status: "sun",    temp: 64, wind: 10, vis: 7.5, score: 20, cams: 8,  host: "Washington Sq. cam",    blurb: "Espresso weather. Sit outside, you've earned it." },
+  { id: "fidi",             name: "FiDi",              x: 64.6, y: 35.4, status: "sun",    temp: 64, wind: 12, vis: 8.0, score: 17, cams: 11, host: "SkylineWebcams · San Francisco", liveUrl: "https://www.skylinewebcams.com/en/webcam/united-states/california/san-francisco/san-francisco.html", embed: false, poster: "https://cdn.skylinewebcams.com/social1833.jpg", blurb: "Clear up high, gusty at the crosswalks." },
+  { id: "soma",             name: "SOMA",              x: 64.7, y: 43.9, status: "partly", temp: 63, wind: 9,  vis: 6.5, score: 27, cams: 12, host: "EarthCam · SF Skyline", liveUrl: "https://www.earthcam.com/usa/california/sanfrancisco/?cam=sanfranciscoskyline", embed: false, poster: "https://www.earthcam.com/cams/includes/image.php?logo=0&playbutton=1&s=1&img=Dg6H3OtZ2Ps%2BdcOgJnecuw%3D%3D", blurb: "Sun with a side of wind tunnel between towers." },
+  { id: "dogpatch",         name: "Dogpatch",          x: 68.6, y: 56.4, status: "sun",    temp: 65, wind: 8,  vis: 8.5, score: 13, cams: 9,  host: "Pier crane cam",        blurb: "Flat, bright, and breezy off the water." },
+  { id: "potrero",          name: "Potrero Hill",      x: 64.1, y: 57.6, status: "sun",    temp: 66, wind: 6,  vis: 9.0, score: 10, cams: 8,  host: "18th St. crest cam",    blurb: "Sun trap. You'll forget I exist down here." },
+  { id: "southeast",        name: "Southeast SF",      x: 65.1, y: 83.1, status: "sun",    temp: 66, wind: 9,  vis: 9.0, score: 9,  cams: 8,  host: "India Basin cam",       blurb: "Sunniest corner of the city. Don't tell everyone." },
+  { id: "richmond",         name: "Richmond",          x: 34.6, y: 41.2, status: "karl",   temp: 53, wind: 20, vis: 0.4, score: 89, cams: 13, host: "Surfline · Ocean Beach", liveUrl: "http://beachcams.wannabemobile.com/ocean-beach-san-francisco", embedUrl: "https://embed.cdn-surfline.com/cam/5d9bd4c1aadd6d60def73b30.html", poster: "https://lirp.cdn-website.com/slackersbarandgrill1/dms3rep/multi/opt/ocean+beach+san+francisco-875530dc-1920w.jpg", blurb: "Full pour. The ocean and I are one big damp idea." },
+  { id: "pac-heights",      name: "Pacific Heights",   x: 50.4, y: 37.4, status: "partly", temp: 60, wind: 15, vis: 5.0, score: 39, cams: 9,  host: "Broadway view cam",     blurb: "Million-dollar view of me approaching from the west." },
+  { id: "nob-hill",         name: "Nob Hill",          x: 58.3, y: 34.9, status: "partly", temp: 61, wind: 13, vis: 6.0, score: 32, cams: 6,  host: "Grace Cathedral cam",   blurb: "I crest the hill some afternoons. Cable-car cinematic." },
+  { id: "hayes",            name: "Hayes Valley",      x: 57.1, y: 45.9, status: "partly", temp: 62, wind: 10, vis: 6.0, score: 30, cams: 8,  host: "Patricia's Green cam",  blurb: "Pleasant pockets. P'tit gray by dusk." },
+  { id: "mission",          name: "The Mission",       x: 58.8, y: 59.3, status: "sun",    temp: 67, wind: 5,  vis: 9.5, score: 8,  cams: 16, host: "Dolores Park hill cam", blurb: "The one true sunny. I dare not enter." },
+  { id: "bernal",           name: "Bernal Heights",    x: 58.1, y: 73.9, status: "sun",    temp: 65, wind: 7,  vis: 9.0, score: 11, cams: 9,  host: "Bernal summit cam",     blurb: "Top of the hill, top of the forecast. Crisp." },
+  { id: "noe-valley",       name: "Noe Valley",        x: 51.4, y: 69.5, status: "sun",    temp: 63, wind: 6,  vis: 7.5, score: 18, cams: 10, host: "24th St. stroller cam", blurb: "Banana belt behavior. I bounce right off these hills." },
+  { id: "castro",           name: "The Castro",        x: 52.7, y: 60.0, status: "sun",    temp: 64, wind: 7,  vis: 7.8, score: 16, cams: 8,  host: "SkylineWebcams · Castro St", liveUrl: "https://www.skylinewebcams.com/en/webcam/united-states/california/san-francisco/castro-street-san-francisco.html", embed: false, poster: "https://cdn.skylinewebcams.com/social1834.jpg", blurb: "Bright and proud. The hills keep me out." },
+  { id: "haight",           name: "Haight-Ashbury",    x: 48.0, y: 51.2, status: "partly", temp: 59, wind: 12, vis: 4.0, score: 44, cams: 7,  host: "Buena Vista cam",       blurb: "Half gray, half groovy. Mood lighting, basically." },
+  { id: "twin-peaks",       name: "Twin Peaks",        x: 46.4, y: 64.2, status: "wind",   temp: 52, wind: 28, vis: 1.0, score: 78, cams: 7,  host: "Sutro Tower base cam",  blurb: "Hold your hat. I'm doing 28 and accelerating." },
+  { id: "golden-gate-park", name: "Golden Gate Park",  x: 34.7, y: 50.9, status: "karl",   temp: 54, wind: 15, vis: 0.6, score: 83, cams: 6,  host: "Bison paddock cam",     blurb: "The bison can't see the windmill. Neither can you." },
+  { id: "sunset",           name: "Sunset",            x: 34.7, y: 65.4, status: "karl",   temp: 54, wind: 18, vis: 0.3, score: 92, cams: 14, host: "Surfline · Ocean Beach", liveUrl: "http://beachcams.wannabemobile.com/ocean-beach-san-francisco", embedUrl: "https://embed.cdn-surfline.com/cam/5d9bd4c1aadd6d60def73b30.html", poster: "https://lirp.cdn-website.com/slackersbarandgrill1/dms3rep/multi/opt/ocean+beach+san+francisco-875530dc-1920w.jpg", blurb: "I never left. Bring a hood." },
+  { id: "lake-merced",      name: "Lake Merced",       x: 34.1, y: 84.2, status: "mist",   temp: 55, wind: 11, vis: 1.6, score: 60, cams: 4,  host: "Lake Merced overlook",  blurb: "Soft focus all day. Very flattering, low visibility." },
+  { id: "glen-park",        name: "Glen Park",         x: 44.1, y: 80.5, status: "partly", temp: 60, wind: 8,  vis: 5.0, score: 33, cams: 5,  host: "Canyon ridge cam",      blurb: "Canyon's keeping the gloom out. Lucky you." },
+];
+
+// status metadata — label + one-word vibe
+window.KARL_STATUS = {
+  sun:    { label: "Clear",      vibe: "No Karl in sight" },
+  partly: { label: "Patchy",     vibe: "Karl's circling" },
+  mist:   { label: "Misty",      vibe: "Light Karl" },
+  karl:   { label: "Full Karl",  vibe: "Peak fog" },
+  wind:   { label: "Gale",       vibe: "Karl in a hurry" },
+  rain:   { label: "Drizzle",    vibe: "Karl's crying" },
+  night:  { label: "Night",      vibe: "Karl after dark" },
+};
+
+  </script>
+
+  <script>
+/* KarlCheck — neighborhood boundary data (v2).
+   Traced from uploads/Photo-339bb54a.svg over the simplified illustrated map
+   (assets/sf-map-new.png, 2744 x 1568). One clickable district per path.
+   KARL_REGIONS = exact SVG path (draw + highlight).
+   KARL_REGION_PTS = sampled polygon (point-in-region hit testing). */
+
+window.KARL_MAPW = 2744;
+window.KARL_MAPH = 1568;
+
+window.KARL_REGIONS = {
+  "presidio": "M1300.33+496.496C1249.79+503.92+1173.62+561.81+1120.97+579.362C1098.93+586.706+1068.62+582.359+1045.74+582.359C1013.65+582.359+988.763+578.908+962.429+561.979C958.899+559.71+953.065+557.188+951.94+552.689C947.588+535.281+968.41+531.059+977.714+522.42C989.842+511.158+1001.5+492.623+1004.39+476.267C1006.09+466.609+1005.08+456.866+1007.08+447.197C1013.86+414.43+1029.14+374.457+1042.75+344.102C1052.81+321.653+1058.96+300.364+1087.1+303.044C1106.83+304.922+1141.79+343.436+1162.03+353.992C1177.46+362.047+1197.17+358.281+1213.87+360.585C1225.59+362.201+1288.78+377.321+1295.69+384.86C1321.65+413.181+1312.78+432.679+1306.48+465.778C1305.02+473.422+1308.87+495.243+1300.33+496.496Z",
+  "marina": "M1517.58+426.375C1519.02+426.469+1504.48+428.917+1494.95+429.446C1481.62+430.186+1468.23+429.274+1454.87+430.092C1415.62+432.495+1371.09+455.612+1331.07+445.607C1325.27+444.157+1324.89+415.057+1322.67+410.052C1313.89+390.294+1311.36+383.785+1311.68+383.546C1347.87+356.404+1465.7+317.24+1506.27+347.667C1518.16+356.591+1520.1+388.178+1518.87+401.647C1518.27+408.307+1512.14+426.018+1517.58+426.375Z",
+  "fishermans": "M1685.56+413.243C1676+408.462+1664.69+417.518+1654.14+419.496C1630.77+423.877+1606.59+425.68+1583.16+429.815C1575.24+431.213+1552.14+435.178+1545.33+429.502C1541.69+426.469+1536.6+392.411+1534.38+386.04C1533.82+384.414+1526.55+344.789+1527.82+342.265C1532.24+333.408+1550.51+332.169+1558.46+328.195C1599.97+307.44+1650.35+298.732+1696.04+308.183C1706.96+310.443+1739.14+312.405+1743.56+327.882C1745.71+335.397+1736.16+344.58+1732.93+350.395C1724.27+365.99+1710.74+377.165+1701.66+392.294C1697.68+398.932+1695.42+410.727+1690.1+416.057C1688.84+417.315+1687.15+414.038+1685.56+413.243Z",
+  "north-beach": "M1754.31+335.888C1750.8+333.451+1729.52+369.732+1723.92+377.573C1713.04+392.805+1701.73+406.049+1693.38+422.759C1691.53+426.454+1687.29+423.613+1685.74+425.941C1683.56+429.204+1683.44+438.484+1684.78+442.17C1688.32+451.907+1701.73+455.27+1705.79+465.399C1711.46+479.592+1715.78+491.321+1731.56+498.493C1746.65+505.352+1768.1+483.925+1780.88+478.445C1790.88+474.162+1807.59+473.016+1814.93+464.444C1821.69+456.56+1824.54+445.436+1823.21+435.169C1820.69+415.874+1772.68+348.629+1754.31+335.888Z",
+  "fidi": "M1885.01+521.299C1884.34+542.06+1827.84+568.727+1809.79+582.952C1787.62+600.417+1753.56+622.363+1728.35+635.937C1724.88+637.805+1706.35+652.206+1701.53+647.385C1696.33+642.186+1695.72+598.469+1693.35+587.204C1690.26+572.532+1671.75+530.976+1679.94+516.229C1696.42+486.559+1741.95+491.051+1769.56+489.736C1805.09+488.044+1836.79+450.297+1867.35+491.045C1874.78+500.95+1885.41+509.186+1885.01+521.299Z",
+  "soma": "M1895.1+532.037C1905.67+566.614+1884.66+613.838+1893.04+649.466C1894.85+657.176+1903.6+683.365+1895.79+689.617C1872.61+708.158+1839.89+697.892+1828.96+708.043C1811.63+724.141+1812.38+744.353+1788.81+757.82C1782.13+761.639+1775.66+767.945+1768.73+771.02C1762.67+773.716+1754.94+771.314+1748.38+774.045C1722.44+784.855+1700.15+809.445+1668.91+803.196C1665.11+802.438+1661.89+800.02+1657.91+799.621C1621.51+795.982+1602.24+801.509+1595.48+756.445C1591+726.563+1628.1+712.116+1648.28+698.143C1690.09+669.195+1729.43+637.984+1769.01+606.014C1784.7+593.342+1803.4+584.373+1819.34+572.188C1829.07+564.744+1839.59+557.037+1850.14+551.012C1861.19+544.694+1889.39+513.344+1895.1+532.037Z",
+  "dogpatch": "M1762.35+787.037C1762.53+796.784+1782.2+804.646+1788.66+814.187C1805.88+839.601+1829.56+875.602+1835.41+906.273C1840.07+930.738+1844.44+955.46+1845.48+980.445C1846.1+995.345+1841.75+1014.34+1854.16+1025.51C1876.24+1045.38+1939.1+1045.4+1965.84+1038.1C1978.65+1034.61+1996.24+1015.08+1994.95+1000.88C1992.12+969.764+1946.13+986.566+1939.81+977.086C1937.6+973.769+1956.07+918.669+1954.08+903.753C1950.77+878.915+1933.55+867.73+1924.13+848.894C1914.4+829.432+1936.84+805.564+1933.65+784.798C1931.32+769.643+1908.11+743.667+1898.94+731.058C1867.3+687.547+1836.11+726.89+1805.46+744.773C1793.65+751.662+1762.13+774.394+1762.35+787.037Z",
+  "potrero": "M1745.25+781.194C1737.39+778.262+1739.33+786.909+1733.53+791.742C1725.29+798.609+1711.76+801.928+1705.41+810.829C1678.6+848.357+1716.01+927.986+1727.17+965.198C1732.79+983.923+1729.39+1023.01+1752.62+1030.16C1763.4+1033.48+1826.57+1032.62+1831.98+1021.79C1837.11+1011.53+1832.08+976.898+1830.98+964.193C1826.47+912.366+1796.5+800.29+1745.25+781.194Z",
+  "southeast": "M1759.19+1044.84C1755.64+1044.26+1737.23+1043.13+1733.37+1045.45C1726.71+1049.44+1724.24+1064.44+1722.43+1070.97C1718.35+1085.66+1710.96+1100.3+1708.45+1115.33C1703.55+1144.77+1711.44+1195.87+1675.03+1209.52C1626.35+1227.78+1576.86+1230.21+1526.15+1234.44C1509.59+1235.82+1493.28+1246.46+1476.93+1250.24C1411.87+1265.25+1353.3+1278.28+1314.07+1337.14C1295+1365.73+1292.74+1407.08+1289.76+1439.83C1286.83+1472.07+1275.17+1507.61+1275.17+1538.89C1275.17+1541.58+1269.96+1565.45+1270.31+1565.62C1303.44+1582.19+1389.36+1572.22+1425.27+1566.23C1497.09+1554.26+1574.49+1556.04+1647.08+1557.72C1681.37+1558.52+1760.98+1578.32+1792.31+1570.49C1801.48+1568.19+1815.66+1484.21+1832.42+1477.51C1861.01+1466.07+1896.41+1483.67+1921.75+1494.53C1925.41+1496.09+1948.73+1505.58+1952.13+1498.78C1956.53+1489.98+1938.44+1457.63+1941.19+1435.58C1942.52+1424.98+1973.03+1407.79+1964.29+1397.3C1962.7+1395.39+1853.9+1336.72+1879.21+1316.47C1896.64+1302.53+1944.27+1290.67+1964.89+1306.14C1989.36+1324.5+1986.02+1441.49+2053.62+1417.35C2070.61+1411.28+2087.38+1382.36+2094.33+1366.91C2100.84+1352.44+2105.22+1337.34+2108.91+1321.94C2117.92+1284.4+2116.11+1266.99+2082.78+1244.77C2062.2+1231.05+2042.57+1221.18+2019.59+1212.56C2010.41+1209.12+1998.41+1210.79+1989.81+1206.48C1981.68+1202.42+1970.87+1187.45+1966.72+1179.14C1963.14+1171.99+1964.89+1160.86+1964.89+1153.01C1964.89+1105.95+2046.17+1149.05+2039.03+1106.22C2037.61+1097.69+1988.94+1072.88+1980.69+1067.93C1940.58+1043.87+1854.85+1027.33+1808.11+1035.12C1794.13+1037.45+1771+1046.78+1759.19+1044.84Z",
+  "richmond": "M1189.96+571.645C1212.31+577.028+1202.06+628.116+1203.97+651.961C1205.51+671.299+1213.84+702.952+1207.4+722.274C1201.19+740.9+1135.33+737.137+1121.65+737.137C1029.92+737.137+937.987+747.999+846.685+747.999C829.62+747.999+727.03+759.252+719.207+751.429C704.863+737.085+711.706+710.898+707.774+692.549C703.795+673.984+685.164+651.38+689.481+631.954C697.085+597.736+750.512+562.523+784.946+560.497C813.968+558.79+840.56+566.471+868.979+568.501C886.204+569.731+924.038+548.32+935.29+555.353C965.615+574.305+994.919+597.065+1033.04+598.798C1088.6+601.323+1136.95+558.874+1189.96+571.645Z",
+  "pac-heights": "M1486.85+465.014C1503.89+478.499+1509.06+504.148+1517.1+524.264C1527.45+550.129+1528.28+579.921+1535.6+606.764C1537.28+612.929+1548.39+651.833+1546.1+655.264C1544.84+657.16+1536.49+659.976+1534.6+661.264C1503.9+682.27+1504.55+676.974+1470.6+683.764C1462.7+685.344+1455.71+690.296+1448.1+692.764C1427.08+699.581+1405.21+702.451+1383.6+706.264C1368.31+708.962+1354.57+716.522+1339.6+720.264C1315.98+726.171+1283.96+730.264+1259.6+730.264C1253.38+730.264+1228.23+740.221+1224.6+731.764C1221.82+725.27+1222.1+631.563+1222.1+617.764C1222.1+601.228+1216.24+557.415+1222.1+542.764C1225.16+535.133+1270.24+512.711+1280.1+508.764C1287.91+505.64+1293.14+497.782+1300.6+493.764C1306.52+490.579+1316.12+488.919+1321.1+484.764C1326.36+480.382+1325.07+476.198+1327.1+470.764C1335.4+448.648+1370.8+454.264+1389.6+454.264C1413.35+454.264+1437.87+447.797+1461.6+450.764C1469.04+451.694+1478.89+458.711+1486.85+465.014Z",
+  "nob-hill": "M1502.37+448.384C1507.92+461.268+1507.09+477.606+1510.19+491.553C1513.36+505.812+1521.48+520.264+1526.46+534.097C1534.39+556.131+1538.91+579.578+1545.54+601.979C1548.19+610.915+1550.84+645.13+1556.49+650.779C1560.76+655.046+1582.32+649.224+1587.46+648.902C1594.41+648.468+1603.96+650.903+1610.61+648.59C1631.17+641.439+1649.13+625.158+1671.92+622.625C1685.17+621.153+1680.44+653.595+1686.62+653.595C1687.03+653.595+1690.16+653.889+1690.38+653.595C1694.59+647.979+1693.14+632.054+1694.13+625.128C1698.69+593.218+1675.78+524.933+1681.93+500.312C1685.49+486.074+1707.72+492.1+1705.39+474.661C1703.6+461.188+1690.06+450.022+1680.06+442.127C1652.54+420.407+1585.74+439.332+1555.24+446.194C1543.33+448.875+1530.2+449.196+1518.01+448.384C1516.77+448.301+1500.82+444.189+1500.5+445.256C1500.15+446.42+1501.89+447.267+1502.37+448.384Z",
+  "hayes": "M1582.42+738.824C1582.75+763.523+1601+797.252+1588.8+821.667C1572.4+854.466+1500.47+876.811+1471.33+849.913C1452.33+832.373+1423.9+742.675+1427.24+715.917C1428.85+703.044+1459.16+697.079+1468.58+694.905C1512.85+684.689+1556.89+676.732+1600.51+663.904C1616.77+659.12+1632.55+653.381+1648.73+648.403C1649.03+648.312+1652.12+647.31+1652.52+647.714C1655.04+650.234+1652.14+664.545+1652.52+668.382C1655.77+700.87+1582.1+714.335+1582.42+738.824Z",
+  "mission": "M1494.61+870.361C1495.7+877.978+1535.76+905.104+1540.17+931.606C1545.86+965.738+1544.73+1000.58+1545.77+1035.05C1545.82+1036.4+1548.39+1071.05+1553.24+1072.02C1578.43+1077.06+1607.19+1073.89+1632.79+1073.89C1651.34+1073.89+1691.3+1082.15+1704.49+1065.67C1713.65+1054.22+1704.07+1026.08+1702.62+1013.02C1697.16+963.831+1692.81+915.453+1684.32+866.627C1683.33+860.909+1678.21+811.391+1674.24+808.743C1669.49+805.575+1657+806.116+1651.46+805.009C1642.4+803.197+1625.73+799.642+1616.36+802.768C1604.88+806.594+1595.19+825.828+1585.73+833.39C1566.41+848.846+1536.87+859.531+1512.54+859.531",
+  "bernal": "M1554.41+1095.73C1550.31+1108.05+1515.96+1176.77+1506.35+1187.18C1496.95+1197.36+1474.22+1210.84+1483.29+1228.99C1484.37+1231.14+1541.98+1240.32+1550.11+1240.32C1588.46+1240.32+1663.31+1207.72+1683.37+1174.28C1693.59+1157.25+1699.12+1139.23+1704.08+1120.35C1715.2+1078.11+1689.43+1085.02+1649.77+1086.75C1624.75+1087.83+1599.79+1091.04+1574.73+1091.04",
+  "noe-valley": "M1386.75+978.388C1382.17+975.683+1382.25+976.889+1382.25+980.841C1382.25+1012.13+1369.14+1038.81+1360.17+1067.94C1355.78+1082.22+1349.05+1100.23+1341.77+1113.33C1338.45+1119.31+1331.38+1124.7+1328.69+1130.09C1322.85+1141.76+1352.18+1159.31+1358.54+1165.66C1366.31+1173.44+1360.68+1188.82+1364.67+1199.19C1374.55+1224.88+1396.9+1233.84+1422.73+1236C1439.68+1237.41+1459.08+1209.54+1469.76+1197.97C1507.42+1157.16+1537.23+1111.56+1537.23+1053.22C1537.23+1044.61+1538.56+990.709+1531.91+987.384C1507.43+975.145+1460.1+976.906+1431.73+978.797C1420.81+979.525+1396.11+983.92+1386.75+978.388Z",
+  "castro": "M1527.82+965.917C1528.51+975.623+1487.04+969.635+1477.53+970.619C1466.92+971.717+1456.29+971.81+1445.63+972.255C1435.01+972.697+1410.83+978.568+1400.65+973.481C1400.15+973.229+1400.24+973.087+1400.24+972.664C1400.24+960.092+1372.26+925.867+1363.03+916.644C1358.1+911.713+1375.44+891.324+1377.75+888.43C1390.55+872.432+1428.05+847.675+1450.95+855.309C1495.79+870.256+1513.72+902.758+1526.59+945.676C1528.83+953.14+1527.33+959.085+1527.82+965.917Z",
+  "haight": "M1201.61+753.07C1193.29+750.598+1197.76+779.395+1196.82+787.841C1195.83+796.819+1193.57+877.406+1204.76+888.597C1206.76+890.593+1220.26+887.866+1222.56+887.502C1239.53+884.822+1256.01+883.669+1273.21+883.669C1293.1+883.669+1339.07+905.466+1353.98+901.739C1355.06+901.471+1383.05+872.565+1390.12+868.063C1398.98+862.427+1430.57+846.118+1433.93+836.029C1439.33+819.811+1429.34+797.684+1425.17+782.366C1422.45+772.406+1420.01+762.272+1417.5+752.248C1409.21+719.097+1416.95+703.221+1380.26+715.012C1374.18+716.968+1368.18+719.009+1362.19+721.31C1350.18+725.931+1338.96+732.59+1326.33+735.547C1307.65+739.918+1288.59+740.712+1269.65+743.213C1260.36+744.44+1210.66+755.755+1201.61+753.07Z",
+  "twin-peaks": "M1343.3+914.334C1351.52+920.306+1314.99+905.886+1309.9+905.299C1295.29+903.613+1224.55+892.948+1211.88+911.048C1202.07+925.062+1195.57+941.503+1185.87+955.677C1173.11+974.329+1157.76+992.081+1146.72+1011.8C1142.06+1020.12+1130.37+1040.98+1136.04+1052.33C1139.58+1059.4+1157.57+1064.61+1163.97+1068.21C1179.23+1076.79+1192.18+1091.85+1202.57+1105.72C1213.75+1120.62+1220.59+1169.64+1241.18+1173.07C1268.04+1177.55+1277.97+1138.73+1291.01+1123.51C1309.09+1102.41+1325.32+1111.9+1336.46+1102.16C1344.83+1094.83+1347.1+1077.92+1350.15+1067.93C1357.97+1042.32+1366.9+1016.41+1372.32+990.175C1376.16+971.655+1380.45+948.012+1369.31+931.309C1364.04+923.396+1358.32+922.081+1350.15+918.715C1349.1+918.284+1340.85+911.829+1340.84+911.87C1340.56+912.997+1342.36+913.651+1343.3+914.334Z",
+  "golden-gate-park": "M724.375+768.059C716.931+782.76+725.076+799.227+725.622+815.632C725.711+818.279+723.191+841.142+723.484+841.289C733.477+846.285+799.726+836.083+815.066+835.231C839.373+833.881+863.817+836.09+888.117+834.875C941.391+832.211+993.55+827.748+1047.05+827.748C1080.78+827.748+1114.52+827.748+1148.25+827.748C1151.81+827.748+1174.39+831.067+1176.4+827.035C1180.46+818.917+1179.67+804.784+1180.68+796.033C1187.35+738.176+1186.07+746.857+1130.08+746.857C1116.55+746.857+1102.98+747.127+1089.45+746.857C1005.53+745.178+920.258+738.253+836.803+749.707C818.458+752.225+732.89+751.245+724.375+768.059Z",
+  "sunset": "M764.176+860.258C752.153+861.599+726.968+863.99+717.912+873.046C714.464+876.494+720.469+908.052+721.297+913.292C727.322+951.451+737.873+988.483+740.856+1027.26C743.906+1066.92+741.045+1107.9+746.122+1147.25C747.804+1160.28+745.498+1180.56+758.158+1189C772.363+1198.47+811.586+1194.26+829.247+1194.26C842.517+1194.26+858.424+1201.26+871.374+1198.03C892.891+1192.65+901.002+1165.59+920.272+1157.03C928.547+1153.35+946.141+1158.76+955.252+1158.16C970.346+1157.15+985.281+1146.77+1000.39+1144.61C1013.65+1142.72+1029.77+1149.14+1040.26+1137.84C1064.08+1112.19+1071.06+1077.36+1086.15+1047.2C1095.42+1028.65+1114.18+1012.39+1128.65+997.923C1155.73+970.846+1172.33+934.868+1180.56+897.871C1183.07+886.551+1188.36+868.159+1177.55+859.505C1145.71+834.032+1094.67+847.075+1055.68+848.221C992.743+850.072+929.948+858.09+867.237+859.881C832.913+860.862+798.31+856.45+764.176+860.258Z",
+  "lake-merced": "M1029.31+1165.31C1030.29+1165.04+1030.62+1166.87+1031.25+1167.66C1031.7+1168.22+1030.39+1166.49+1029.87+1166C1027.65+1163.95+1025.47+1163.17+1022.68+1162.41C1016.25+1160.66+1009.23+1161.03+1002.5+1161.03C993.465+1161.03+985.203+1166.33+976.244+1167.39C963.058+1168.94+952.445+1163.24+940.035+1163.24C904.101+1163.24+887.216+1202.6+849.65+1210.51C828.607+1214.94+802.458+1212.46+781.377+1208.85C776.295+1207.98+759.892+1202.69+754.842+1207.74C751.587+1211+753.737+1225.25+753.737+1229.02C753.737+1250.68+756.516+1271.91+758.988+1293.43C767.112+1364.1+757.702+1434.55+764.24+1505.16C764.87+1511.95+766.793+1567.52+771.427+1569.83C781.988+1575.12+797.368+1572.26+809.018+1572.05C836.589+1571.54+864.095+1573.46+891.664+1572.05C923.619+1570.41+955.877+1568.54+987.853+1567.9C995.113+1567.75+1018.98+1570.75+1024.62+1564.31C1031.23+1556.75+1033.62+1543.34+1038.44+1534.45C1051.12+1511.04+1067.2+1492.87+1073.26+1466.18C1083.22+1422.39+1069.7+1378.17+1073.54+1334.06C1076.11+1304.49+1094.77+1276.23+1092.06+1246.44C1090.4+1228.18+1065.65+1197.64+1052.53+1184.52C1047.73+1179.72+1027.94+1165.7+1029.31+1165.31Z",
+  "glen-park": "M1392.65+1250.68C1394.38+1251.28+1384.46+1256.76+1382.35+1258.26C1374.85+1263.57+1367+1268.24+1359.62+1273.71C1334.99+1291.98+1300.68+1308.56+1284.77+1335.83C1253.03+1390.24+1312.97+1508.57+1208.71+1508.57C1193.12+1508.57+1178.45+1503.84+1163.25+1500.99C1144.1+1497.4+1123.63+1497+1105.07+1491.29C1076.89+1482.62+1085.88+1411.66+1084.46+1388.26C1083.06+1365.11+1082.97+1342.39+1088.4+1319.77C1094.25+1295.42+1106.19+1275.74+1102.04+1249.47C1100.1+1237.2+1091.9+1226+1086.58+1214.92C1070.88+1182.21+1058.7+1153.93+1058.7+1117.35C1058.7+1101.18+1082.02+1044.32+1100.22+1041.28C1119.57+1038.06+1137.77+1057.01+1148.7+1070.37C1166.62+1092.27+1182.97+1114.05+1195.68+1139.47C1203.97+1156.05+1208.02+1178.5+1222.04+1191.59C1257.45+1224.64+1289.25+1126.59+1324.47+1140.68C1351.64+1151.55+1365.15+1204.32+1379.92+1227.95C1383.86+1234.26+1386.09+1248.41+1392.65+1250.68Z",
+};
+
+window.KARL_REGION_PTS = {
+  "presidio": [[1300,496],[1280,502],[1260,510],[1240,519],[1221,529],[1203,539],[1184,549],[1165,559],[1146,569],[1126,577],[1106,583],[1084,584],[1063,583],[1042,582],[1020,581],[999,578],[979,571],[960,561],[952,543],[968,529],[984,516],[996,498],[1004,478],[1006,457],[1010,436],[1015,415],[1022,395],[1030,375],[1038,355],[1046,336],[1056,317],[1073,304],[1094,305],[1112,316],[1129,329],[1145,343],[1163,355],[1184,359],[1205,360],[1226,363],[1247,368],[1268,374],[1288,381],[1303,395],[1312,414],[1312,435],[1308,456],[1306,477]],
+  "marina": [[1518,426],[1507,428],[1495,429],[1484,430],[1473,430],[1461,430],[1450,430],[1439,432],[1428,434],[1417,437],[1406,440],[1395,442],[1384,445],[1372,447],[1361,448],[1350,448],[1339,447],[1329,443],[1326,432],[1325,421],[1323,410],[1318,399],[1314,389],[1316,380],[1326,374],[1336,369],[1346,364],[1357,360],[1367,356],[1378,352],[1389,349],[1400,346],[1411,343],[1422,341],[1433,339],[1444,338],[1456,337],[1467,337],[1478,338],[1489,340],[1500,344],[1509,350],[1514,360],[1517,371],[1519,382],[1519,394],[1518,405],[1516,416]],
+  "fishermans": [[1686,413],[1674,413],[1663,417],[1651,420],[1640,422],[1628,424],[1616,425],[1604,427],[1592,428],[1580,430],[1569,432],[1557,432],[1545,430],[1541,418],[1539,407],[1537,395],[1534,383],[1532,372],[1530,360],[1528,348],[1532,338],[1543,333],[1554,330],[1565,325],[1576,320],[1587,316],[1599,313],[1610,310],[1622,307],[1634,306],[1646,305],[1658,304],[1669,305],[1681,306],[1693,308],[1705,310],[1717,312],[1728,315],[1739,321],[1744,331],[1739,342],[1732,351],[1726,361],[1718,371],[1711,380],[1703,389],[1698,400],[1694,411]],
+  "north-beach": [[1754,336],[1748,342],[1742,350],[1737,358],[1732,365],[1727,373],[1721,381],[1716,389],[1710,396],[1705,404],[1699,412],[1695,420],[1688,425],[1684,433],[1685,442],[1690,450],[1698,456],[1704,462],[1708,471],[1712,479],[1717,487],[1724,494],[1732,499],[1741,500],[1750,497],[1758,492],[1766,487],[1774,482],[1783,478],[1792,475],[1801,472],[1809,469],[1816,463],[1821,454],[1823,445],[1823,436],[1821,427],[1817,418],[1812,410],[1807,402],[1802,394],[1797,386],[1791,378],[1786,371],[1780,363],[1774,356],[1768,349],[1761,342]],
+  "fidi": [[1885,521],[1880,533],[1871,542],[1861,549],[1851,556],[1841,563],[1830,570],[1819,576],[1809,584],[1799,591],[1789,598],[1778,606],[1768,612],[1757,619],[1747,626],[1736,632],[1725,638],[1714,645],[1702,648],[1698,636],[1697,624],[1696,612],[1695,599],[1693,587],[1690,575],[1686,563],[1682,551],[1679,538],[1678,526],[1681,514],[1690,505],[1700,498],[1712,494],[1724,492],[1737,491],[1749,490],[1762,490],[1774,489],[1787,487],[1799,482],[1810,478],[1822,474],[1835,472],[1847,474],[1858,481],[1866,490],[1874,499],[1882,509]],
+  "soma": [[1895,532],[1898,551],[1897,570],[1895,589],[1893,608],[1891,627],[1892,646],[1897,664],[1899,683],[1886,696],[1868,701],[1849,703],[1830,707],[1818,722],[1809,738],[1797,753],[1781,763],[1764,772],[1746,775],[1729,784],[1712,794],[1695,802],[1676,804],[1658,800],[1639,798],[1620,795],[1605,785],[1598,767],[1595,748],[1603,731],[1617,718],[1633,708],[1649,698],[1665,687],[1680,675],[1695,664],[1710,653],[1725,641],[1740,629],[1755,617],[1770,605],[1786,594],[1802,584],[1818,573],[1833,562],[1849,552],[1864,540],[1880,529]],
+  "dogpatch": [[1762,787],[1774,802],[1789,815],[1800,831],[1810,847],[1820,864],[1828,882],[1834,901],[1838,920],[1841,939],[1844,958],[1845,978],[1845,997],[1848,1017],[1861,1030],[1879,1037],[1898,1041],[1918,1042],[1937,1042],[1957,1040],[1975,1033],[1989,1020],[1995,1001],[1986,985],[1967,981],[1947,980],[1941,966],[1946,947],[1951,928],[1954,909],[1950,890],[1941,873],[1929,857],[1922,840],[1925,821],[1932,802],[1933,783],[1925,765],[1913,750],[1901,734],[1888,720],[1871,711],[1852,715],[1835,724],[1819,736],[1803,746],[1787,758],[1772,771]],
+  "potrero": [[1745,781],[1736,788],[1726,797],[1715,803],[1705,812],[1699,823],[1696,836],[1696,850],[1697,863],[1699,876],[1702,889],[1706,901],[1710,914],[1714,927],[1718,939],[1723,952],[1727,964],[1730,977],[1731,990],[1734,1003],[1738,1016],[1745,1026],[1758,1031],[1771,1032],[1784,1032],[1797,1031],[1810,1030],[1823,1027],[1833,1019],[1834,1006],[1834,993],[1833,980],[1831,966],[1830,953],[1828,940],[1825,927],[1822,914],[1819,902],[1815,889],[1811,876],[1807,864],[1802,851],[1797,839],[1790,828],[1784,816],[1776,806],[1767,796],[1757,787]],
+  "southeast": [[1759,1045],[1728,1053],[1717,1086],[1708,1120],[1705,1155],[1697,1189],[1671,1211],[1638,1221],[1603,1227],[1568,1231],[1533,1234],[1499,1242],[1466,1253],[1432,1261],[1398,1272],[1367,1287],[1339,1308],[1316,1335],[1301,1366],[1294,1401],[1290,1436],[1285,1471],[1279,1505],[1275,1540],[1279,1569],[1313,1574],[1348,1574],[1383,1572],[1418,1567],[1453,1562],[1488,1559],[1523,1557],[1558,1557],[1593,1557],[1629,1557],[1664,1559],[1698,1564],[1733,1569],[1768,1572],[1798,1562],[1809,1528],[1820,1495],[1845,1474],[1880,1478],[1913,1491],[1946,1501],[1947,1471],[1941,1437],[1962,1410],[1946,1386],[1916,1367],[1889,1345],[1880,1316],[1912,1302],[1947,1299],[1974,1319],[1985,1352],[1996,1385],[2016,1414],[2050,1419],[2077,1397],[2094,1367],[2106,1334],[2113,1300],[2106,1266],[2080,1243],[2049,1225],[2017,1212],[1984,1202],[1965,1173],[1969,1139],[2001,1128],[2035,1122],[2026,1094],[1996,1076],[1965,1060],[1932,1048],[1898,1040],[1863,1035],[1828,1033],[1794,1039]],
+  "richmond": [[1190,572],[1204,594],[1204,621],[1204,649],[1207,676],[1210,703],[1202,729],[1176,736],[1148,737],[1121,737],[1093,737],[1065,738],[1038,740],[1010,741],[983,743],[955,744],[928,746],[900,747],[873,748],[845,748],[817,750],[790,752],[762,754],[735,754],[713,742],[709,715],[706,687],[695,662],[689,636],[700,611],[719,591],[741,575],[767,564],[794,560],[821,562],[849,566],[876,568],[902,560],[929,554],[953,567],[977,581],[1002,593],[1029,599],[1056,597],[1083,591],[1109,583],[1135,574],[1163,569]],
+  "pac-heights": [[1487,465],[1500,482],[1509,501],[1516,521],[1523,542],[1527,563],[1531,584],[1535,605],[1541,626],[1546,646],[1535,661],[1517,672],[1497,679],[1476,683],[1455,690],[1435,696],[1414,701],[1393,705],[1372,709],[1352,716],[1331,722],[1310,726],[1289,729],[1268,730],[1247,733],[1226,733],[1223,712],[1222,691],[1222,669],[1222,648],[1222,627],[1222,605],[1220,584],[1220,562],[1223,541],[1240,529],[1259,519],[1278,509],[1296,497],[1315,488],[1327,472],[1341,457],[1362,454],[1384,454],[1405,453],[1427,451],[1448,450],[1469,453]],
+  "nob-hill": [[1502,448],[1507,464],[1508,481],[1512,497],[1517,513],[1524,528],[1530,543],[1534,559],[1538,575],[1543,591],[1547,607],[1549,624],[1552,640],[1561,652],[1578,651],[1594,649],[1610,649],[1626,642],[1640,634],[1655,627],[1671,623],[1681,633],[1684,650],[1693,646],[1694,630],[1695,613],[1693,597],[1691,580],[1688,564],[1685,548],[1683,531],[1681,515],[1683,498],[1696,489],[1706,477],[1700,462],[1689,450],[1676,439],[1660,434],[1644,432],[1627,433],[1611,435],[1595,437],[1578,441],[1562,445],[1546,448],[1529,449],[1513,447]],
+  "hayes": [[1582,739],[1584,754],[1588,769],[1591,783],[1593,798],[1592,813],[1586,827],[1575,838],[1563,847],[1550,853],[1535,858],[1520,861],[1505,862],[1490,860],[1477,854],[1466,843],[1458,830],[1452,817],[1447,803],[1442,788],[1437,774],[1433,759],[1430,745],[1428,730],[1427,715],[1438,704],[1452,699],[1467,695],[1481,692],[1496,689],[1511,686],[1526,682],[1540,679],[1555,676],[1570,672],[1585,668],[1599,664],[1613,660],[1628,655],[1642,650],[1654,652],[1652,667],[1650,681],[1640,693],[1627,701],[1614,709],[1601,717],[1589,726]],
+  "mission": [[1495,870],[1505,883],[1517,895],[1529,908],[1537,923],[1541,939],[1543,956],[1544,973],[1545,990],[1545,1007],[1545,1024],[1546,1041],[1548,1058],[1555,1072],[1572,1074],[1589,1075],[1605,1075],[1622,1074],[1639,1074],[1656,1075],[1673,1076],[1690,1074],[1705,1066],[1708,1049],[1706,1032],[1703,1016],[1701,999],[1699,982],[1697,965],[1696,948],[1694,931],[1692,914],[1689,898],[1687,881],[1684,864],[1682,847],[1679,830],[1676,814],[1663,806],[1646,804],[1629,802],[1613,804],[1601,816],[1590,829],[1577,840],[1562,848],[1546,854],[1529,858]],
+  "bernal": [[1554,1096],[1550,1107],[1544,1118],[1539,1129],[1533,1140],[1528,1151],[1522,1162],[1516,1173],[1509,1184],[1501,1193],[1492,1201],[1484,1211],[1481,1223],[1489,1231],[1501,1233],[1513,1235],[1525,1237],[1537,1239],[1550,1240],[1562,1239],[1574,1237],[1586,1234],[1598,1230],[1610,1226],[1621,1221],[1632,1216],[1643,1210],[1653,1203],[1663,1196],[1673,1188],[1681,1178],[1687,1168],[1692,1157],[1697,1145],[1701,1133],[1704,1121],[1706,1109],[1706,1097],[1698,1088],[1686,1085],[1674,1085],[1661,1086],[1649,1087],[1636,1087],[1624,1088],[1612,1089],[1599,1090],[1587,1091]],
+  "noe-valley": [[1387,978],[1382,989],[1380,1004],[1376,1020],[1371,1035],[1366,1050],[1361,1065],[1356,1080],[1350,1095],[1344,1110],[1334,1123],[1328,1136],[1338,1149],[1350,1159],[1361,1170],[1363,1186],[1366,1202],[1374,1215],[1386,1225],[1401,1232],[1416,1235],[1432,1234],[1445,1225],[1456,1214],[1466,1202],[1477,1190],[1487,1178],[1497,1165],[1506,1152],[1514,1138],[1521,1124],[1527,1109],[1532,1094],[1535,1079],[1537,1063],[1537,1047],[1537,1031],[1537,1015],[1536,999],[1529,986],[1514,981],[1498,979],[1482,978],[1466,977],[1450,978],[1434,979],[1418,980],[1402,981]],
+  "castro": [[1528,966],[1521,971],[1511,972],[1501,971],[1492,971],[1482,971],[1473,971],[1463,972],[1454,972],[1444,972],[1435,973],[1425,975],[1415,975],[1406,975],[1400,970],[1396,961],[1391,953],[1386,945],[1380,937],[1374,929],[1368,922],[1362,915],[1365,906],[1370,898],[1376,890],[1383,883],[1390,877],[1397,871],[1406,866],[1414,861],[1423,858],[1432,855],[1442,854],[1451,855],[1460,859],[1469,863],[1477,868],[1485,873],[1492,880],[1498,887],[1504,894],[1509,903],[1514,911],[1517,920],[1521,929],[1524,938],[1527,947],[1528,956]],
+  "haight": [[1202,753],[1196,766],[1197,781],[1196,796],[1196,811],[1196,827],[1196,842],[1197,857],[1199,873],[1204,887],[1218,888],[1233,886],[1248,885],[1264,884],[1279,884],[1294,887],[1308,892],[1323,896],[1338,900],[1353,902],[1364,892],[1375,881],[1387,871],[1399,863],[1412,855],[1425,846],[1434,834],[1435,819],[1432,804],[1427,790],[1423,775],[1419,760],[1416,745],[1413,730],[1409,715],[1395,711],[1380,715],[1366,720],[1351,726],[1337,732],[1323,736],[1308,739],[1292,741],[1277,742],[1262,745],[1247,747],[1232,750],[1217,753]],
+  "twin-peaks": [[1343,914],[1330,912],[1314,906],[1297,904],[1280,902],[1264,901],[1247,901],[1230,902],[1214,909],[1205,923],[1197,937],[1188,952],[1179,966],[1168,980],[1159,993],[1149,1007],[1141,1022],[1135,1038],[1137,1054],[1152,1063],[1167,1070],[1181,1081],[1192,1093],[1203,1106],[1210,1121],[1216,1137],[1222,1153],[1231,1167],[1246,1173],[1262,1167],[1272,1154],[1281,1139],[1290,1125],[1302,1114],[1318,1108],[1334,1104],[1344,1090],[1349,1074],[1353,1058],[1358,1041],[1363,1025],[1368,1009],[1372,993],[1375,976],[1376,959],[1374,942],[1366,928],[1352,919]],
+  "golden-gate-park": [[724,768],[722,790],[725,812],[724,834],[738,843],[760,841],[782,839],[804,836],[827,835],[849,835],[871,835],[893,835],[915,833],[938,832],[960,831],[982,830],[1004,829],[1026,828],[1048,828],[1071,828],[1093,828],[1115,828],[1137,828],[1160,829],[1178,823],[1180,800],[1183,778],[1183,756],[1165,746],[1143,747],[1121,747],[1098,747],[1076,747],[1054,746],[1032,745],[1009,744],[987,744],[965,743],[943,743],[921,744],[898,744],[876,746],[854,748],[832,750],[810,751],[788,753],[766,755],[744,758]],
+  "sunset": [[764,860],[735,865],[717,883],[721,912],[726,941],[732,970],[737,999],[741,1028],[742,1058],[743,1087],[744,1117],[746,1146],[749,1175],[770,1193],[799,1195],[829,1194],[858,1198],[885,1191],[905,1169],[930,1156],[959,1158],[987,1148],[1016,1145],[1042,1135],[1059,1111],[1071,1084],[1082,1057],[1097,1031],[1117,1010],[1137,989],[1154,965],[1168,939],[1177,911],[1184,882],[1174,857],[1146,846],[1117,844],[1088,846],[1058,848],[1029,849],[999,851],[970,853],[941,856],[911,858],[882,859],[852,860],[823,859],[794,859]],
+  "lake-merced": [[1029,1165],[1008,1161],[981,1166],[953,1165],[925,1166],[901,1180],[879,1197],[854,1210],[826,1213],[798,1211],[770,1206],[753,1220],[754,1248],[757,1276],[760,1304],[762,1332],[762,1361],[762,1389],[762,1417],[762,1445],[762,1473],[764,1501],[766,1530],[768,1558],[786,1573],[815,1572],[843,1572],[871,1573],[899,1572],[927,1570],[955,1569],[984,1568],[1012,1568],[1032,1552],[1043,1526],[1058,1502],[1070,1477],[1076,1449],[1077,1421],[1075,1393],[1073,1365],[1073,1337],[1079,1309],[1087,1282],[1092,1254],[1085,1228],[1070,1204],[1051,1183]],
+  "glen-park": [[1393,1251],[1369,1267],[1345,1284],[1321,1300],[1298,1318],[1282,1342],[1275,1370],[1274,1400],[1274,1429],[1272,1458],[1263,1485],[1241,1503],[1212,1509],[1183,1505],[1155,1500],[1126,1496],[1098,1487],[1087,1461],[1084,1432],[1085,1403],[1084,1374],[1084,1345],[1089,1316],[1098,1288],[1103,1259],[1095,1231],[1082,1206],[1071,1179],[1062,1151],[1059,1122],[1065,1093],[1077,1067],[1094,1044],[1122,1046],[1144,1065],[1162,1087],[1179,1111],[1194,1136],[1205,1163],[1219,1189],[1245,1197],[1268,1179],[1288,1158],[1311,1140],[1337,1149],[1354,1173],[1366,1199],[1379,1226]],
+};
+
+  </script>
+
+  <script type="text/babel">
+/* KarlCheck — hand-drawn weather badges + Karl mascot.
+   Line-art SVGs, stroke = currentColor, wobbled by a shared turbulence filter.
+   Mount <KarlDefs/> once near the app root, then use <WeatherIcon status=.. />. */
+
+// Shared roughen filter — gives strokes a hand-drawn wobble.
+// `on` toggles the displacement (0 = flat, clean lines).
+function KarlDefs({ on = true }) {
+  const s1 = on ? 2.1 : 0, s2 = on ? 2.6 : 0;
+  return (
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+      <defs>
+        <filter id="karlRough" x="-12%" y="-12%" width="124%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale={s1} xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+        <filter id="karlRough2" x="-12%" y="-12%" width="124%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="21" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale={s2} xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+  );
+}
+
+function WeatherIcon({ status = "sun", size = 32, sw = 2.3, rough = true, style = {} }) {
+  const f = rough ? "url(#karlRough)" : undefined;
+  const common = {
+    fill: "none", stroke: "currentColor", strokeWidth: sw,
+    strokeLinecap: "round", strokeLinejoin: "round",
+  };
+  const cloud = "M15 33 q-7 0 -7 -7 q0 -6 6 -6.6 q1.4 -8 9.6 -8 q7.2 0 8.4 7 q6.6 .2 6.6 7 q0 7.6 -8 7.6 z";
+
+  const inner = () => {
+    switch (status) {
+      case "sun":
+        return (
+          <g {...common}>
+            <circle cx="24" cy="24" r="7.5" />
+            {Array.from({ length: 8 }).map((_, i) => {
+              const a = (i * Math.PI) / 4;
+              const r1 = 12.5, r2 = 17.5;
+              return <line key={i}
+                x1={24 + Math.cos(a) * r1} y1={24 + Math.sin(a) * r1}
+                x2={24 + Math.cos(a) * r2} y2={24 + Math.sin(a) * r2} />;
+            })}
+          </g>
+        );
+      case "partly":
+        return (
+          <g {...common}>
+            <circle cx="18" cy="18" r="5.5" />
+            {[-2.4, -1.2, 0, 1.2, 2.4].map((k, i) => {
+              const a = -2.0 + k * 0.55;
+              return <line key={i}
+                x1={18 + Math.cos(a) * 8} y1={18 + Math.sin(a) * 8}
+                x2={18 + Math.cos(a) * 11.5} y2={18 + Math.sin(a) * 11.5} />;
+            })}
+            <path d="M16 36 q-6 0 -6 -6 q0 -5 5.4 -5.6 q1.2 -7 8.6 -7 q6.4 0 7.6 6.2 q5.8 .2 5.8 6.2 q0 6.2 -7 6.2 z" />
+          </g>
+        );
+      case "mist":
+        return (
+          <g {...common}>
+            {[15, 22, 29, 36].map((y, i) => (
+              <path key={i} d={`M9 ${y} q5 -3 9 0 q5 3 9 0 q5 -3 9 0`}
+                strokeWidth={sw * (i === 1 || i === 2 ? 1 : 0.9)} />
+            ))}
+          </g>
+        );
+      case "karl":
+        return (
+          <g {...common}>
+            <path d={cloud} />
+            {[37, 42].map((y, i) => (
+              <path key={i} d={`M12 ${y} q5 -2.6 9 0 q5 2.6 9 0 q4 -2 7 -0.4`} strokeWidth={sw * 0.92} />
+            ))}
+          </g>
+        );
+      case "wind":
+        return (
+          <g {...common}>
+            <path d="M8 18 h18 a4 4 0 1 0 -4 -4" />
+            <path d="M8 26 h26 a4.5 4.5 0 1 1 -4.5 4.5" />
+            <path d="M8 34 h13 a3.5 3.5 0 1 1 -3.5 3.5" />
+          </g>
+        );
+      case "rain":
+        return (
+          <g {...common}>
+            <path d={cloud} />
+            {[16, 24, 32].map((x, i) => (
+              <line key={i} x1={x} y1="36" x2={x - 2.5} y2="42.5" strokeWidth={sw * 0.95} />
+            ))}
+          </g>
+        );
+      case "night":
+        return (
+          <g {...common}>
+            <path d="M31 30 a12 12 0 1 1 -11 -19 a9.5 9.5 0 0 0 11 19 z" />
+            <path d="M34 14 l1.4 3 l3 1.4 l-3 1.4 l-1.4 3 l-1.4 -3 l-3 -1.4 l3 -1.4 z" strokeWidth={sw * 0.8} />
+          </g>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" style={{ filter: f, overflow: "visible", display: "block", ...style }}>
+      {inner()}
+    </svg>
+  );
+}
+
+// Karl the Fog — friendly cloud mascot with a face. Eyeline shifts with `mood`.
+function KarlMascot({ size = 44, sw = 2.4, mood = "smug", style = {} }) {
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: sw, strokeLinecap: "round", strokeLinejoin: "round" };
+  const mouth = {
+    smug: "M20 30 q4 2.4 8 0",
+    sleepy: "M21 31 q3 -1 6 0",
+    gleeful: "M19 29 q5 4 10 0",
+  }[mood] || "M20 30 q4 2.4 8 0";
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" style={{ filter: "url(#karlRough2)", overflow: "visible", display: "block", ...style }}>
+      <g {...common}>
+        <path d="M13 33 q-7.5 0 -7.5 -7.5 q0 -6.4 6.4 -7 q1.4 -8.6 10.2 -8.6 q7.8 0 9 7.6 q7 .2 7 7.4 q0 8.1 -8.5 8.1 z" />
+        <circle cx="19" cy="23" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="29" cy="23" r="1.5" fill="currentColor" stroke="none" />
+        <path d={mouth} />
+        <path d="M11 39 q5 -2.6 9 0 q5 2.6 9 0 q4 -2 7 -0.4" strokeWidth={sw * 0.85} />
+        <path d="M14 44 q4 -2 7 0 q4 2 7 0" strokeWidth={sw * 0.7} opacity="0.6" />
+      </g>
+    </svg>
+  );
+}
+
+// UI glyphs — expand / minimize / close. stroke = currentColor.
+function ExpandIcon({ size = 14, sw = 2.2, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", color: "#fff", ...style }}>
+      <path d="M9 4 H4 V9 M15 4 H20 V9 M9 20 H4 V15 M15 20 H20 V15" />
+    </svg>
+  );
+}
+function MinimizeIcon({ size = 16, sw = 2.2, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M9 9 H4 M9 9 V4 M9 9 L4 4 M15 15 H20 M15 15 V20 M15 15 L20 20" />
+    </svg>
+  );
+}
+function XIcon({ size = 16, sw = 2.2, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M6 6 L18 18 M18 6 L6 18" />
+    </svg>
+  );
+}
+function CameraIcon({ size = 16, sw = 2, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M3 8.5a2 2 0 012-2h2l1.2-1.8a1 1 0 01.8-.4h4a1 1 0 01.8.4L20 8.5a2 2 0 012 2v6a2 2 0 01-2 2H3a2 2 0 01-2-2v-6a2 2 0 012-2z" transform="translate(0.5 0)" />
+      <circle cx="12" cy="13" r="3.2" />
+    </svg>
+  );
+}
+function ShareIcon({ size = 16, sw = 2, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M12 3 V15 M8 7 L12 3 L16 7 M5 12 V19 a1 1 0 001 1 H18 a1 1 0 001-1 V12" />
+    </svg>
+  );
+}
+function CogIcon({ size = 20, sw = 1.6, style = {} }) {
+  // proper toothed gear (8 teeth) + hub
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M10.3 2.6 h3.4 l.5 2.3 a7.4 7.4 0 0 1 1.9 1.1 l2.2 -.8 1.7 2.9 -1.7 1.6 a7.5 7.5 0 0 1 0 2.2 l1.7 1.6 -1.7 2.9 -2.2 -.8 a7.4 7.4 0 0 1 -1.9 1.1 l-.5 2.3 h-3.4 l-.5 -2.3 a7.4 7.4 0 0 1 -1.9 -1.1 l-2.2 .8 -1.7 -2.9 1.7 -1.6 a7.5 7.5 0 0 1 0 -2.2 l-1.7 -1.6 1.7 -2.9 2.2 .8 a7.4 7.4 0 0 1 1.9 -1.1 Z" />
+      <circle cx="12" cy="12" r="3.1" />
+    </svg>
+  );
+}
+function ChevronIcon({ size = 18, sw = 2, dir = "right", style = {} }) {
+  const d = { right: "M9 5 L16 12 L9 19", left: "M15 5 L8 12 L15 19", down: "M5 9 L12 16 L19 9" }[dir];
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d={d} />
+    </svg>
+  );
+}
+function UserIcon({ size = 20, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M5 20 a7 7 0 0114 0" />
+    </svg>
+  );
+}
+function GalleryIcon({ size = 20, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+      <circle cx="8.5" cy="9.5" r="1.6" />
+      <path d="M4 17 L9.5 12 L13 15 L16.5 11.5 L20 15.5" />
+    </svg>
+  );
+}
+function TrophyIcon({ size = 20, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M7 4 H17 V9 a5 5 0 01-10 0 Z" />
+      <path d="M7 5.5 H4.2 a1 1 0 00-1 1 C3.2 9.5 5 11 7 11 M17 5.5 h2.8 a1 1 0 011 1 C21.8 9.5 20 11 18 11" />
+      <path d="M12 14 v3 M9 20 h6 M9.5 20 q.4-3 2.5-3 q2.1 0 2.5 3" />
+    </svg>
+  );
+}
+function VideoIcon({ size = 20, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <rect x="3" y="6" width="12.5" height="12" rx="2.5" />
+      <path d="M15.5 10 L21 7 V17 L15.5 14 Z" />
+    </svg>
+  );
+}
+function MailIcon({ size = 20, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M4 7 L12 13 L20 7" />
+    </svg>
+  );
+}
+function MegaphoneIcon({ size = 20, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M4 9.5 v5 a1 1 0 001 1 h2 l1.5 4 h2 l-1-4 L19 19 V5 L9 9.5 Z" />
+      <path d="M4 9.5 L9 9.5 M19 8 a3.5 3.5 0 010 8" />
+    </svg>
+  );
+}
+function TrashIcon({ size = 18, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M4 6.5 H20 M9 6.5 V4.5 a1 1 0 011-1 h4 a1 1 0 011 1 v2 M6.5 6.5 L7.5 20 a1 1 0 001 1 H15.5 a1 1 0 001-1 L17.5 6.5 M10 10 v7 M14 10 v7" />
+    </svg>
+  );
+}
+function ThumbIcon({ size = 16, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M7 10 V20 H4.5 a1 1 0 01-1-1 V11 a1 1 0 011-1 Z" />
+      <path d="M7 10 L11 3.5 a2 2 0 012 1.8 V9 H18.5 a2 2 0 012 2.3 l-1.2 7 a2 2 0 01-2 1.7 H7" />
+    </svg>
+  );
+}
+function LogoutIcon({ size = 18, sw = 1.9, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M14 5 H6 a1 1 0 00-1 1 V18 a1 1 0 001 1 H14 M10 12 H21 M17 8 L21 12 L17 16" />
+    </svg>
+  );
+}
+function HeartIcon({ size = 16, sw = 1.9, filled = false, style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor"
+      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
+      <path d="M12 20 C12 20 3.5 14.5 3.5 8.8 A4.3 4.3 0 0 1 12 6.8 A4.3 4.3 0 0 1 20.5 8.8 C20.5 14.5 12 20 12 20 Z" />
+    </svg>
+  );
+}
+
+Object.assign(window, { KarlDefs, WeatherIcon, KarlMascot, ExpandIcon, MinimizeIcon, XIcon, CameraIcon, ShareIcon,
+  CogIcon, ChevronIcon, UserIcon, GalleryIcon, TrophyIcon, VideoIcon, MailIcon, MegaphoneIcon, TrashIcon, ThumbIcon, LogoutIcon, HeartIcon });
+
+  </script>
+
+  <script type="text/babel">
+/* KarlCheck — map layer.
+   Base = the illustrated SF map (assets/sf-map.png, 2744x1568).
+   Overlay = one clickable polygon per neighborhood (KARL_REGIONS, traced/tiled to the
+   real coastline). The selected (and hovered) neighborhood gets its border highlighted. */
+
+const KC_IMGW = 2744, KC_IMGH = 1568;
+
+function SFMap({ selId, hoverId }) {
+  const hoods = window.KARL_HOODS;
+  const regions = window.KARL_REGIONS;
+  // draw selected last so its border sits on top of neighbours
+  const ordered = [...hoods].sort((a, b) => (a.id === selId ? 1 : 0) - (b.id === selId ? 1 : 0));
+
+  return (
+    <div style={{ position: "relative", width: KC_IMGW, height: KC_IMGH }}>
+      <img src="project/assets/sf-map-new.png" width={KC_IMGW} height={KC_IMGH} alt="Map of San Francisco neighborhoods"
+        draggable="false" style={{ display: "block", width: "100%", height: "100%", userSelect: "none" }} />
+
+      <svg viewBox={`0 0 ${KC_IMGW} ${KC_IMGH}`} width="100%" height="100%"
+        style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none" }}>
+        {ordered.map(h => {
+          const d = regions[h.id]; if (!d) return null;
+          const sel = h.id === selId, hov = h.id === hoverId;
+          return (
+            <path key={h.id} d={d}
+              fill={sel ? "color-mix(in srgb, var(--accent) 20%, transparent)"
+                  : hov ? "color-mix(in srgb, var(--accent) 13%, transparent)"
+                  :        "color-mix(in srgb, var(--accent) 7%, transparent)"}
+              stroke={sel ? "var(--accent)"
+                  : hov ? "color-mix(in srgb, var(--accent) 55%, transparent)"
+                  :        "color-mix(in srgb, var(--accent) 22%, transparent)"}
+              strokeWidth={sel ? 3.4 : 2.2} vectorEffect="non-scaling-stroke"
+              strokeLinejoin="round" style={{ transition: "fill .15s" }} />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+Object.assign(window, { SFMap });
+
+  </script>
+
+  <script type="text/babel">
+/* KarlCheck — settings system: account, contributions, trophies, contact links */
+
+// ── level / trophy model ───────────────────────────────────────
+const LEVEL_TIERS = [
+  { name: "Misty Novice",    emoji: "🌫️", min: 1,  max: 5,        blurb: "Just rolled in. Keep the pics coming." },
+  { name: "Jacket Wearer",   emoji: "🧥", min: 6,  max: 10,       blurb: "You've learned. You bring layers now." },
+  { name: "Karl's Paparazzi",emoji: "📸", min: 11, max: 20,       blurb: "Karl can't make a move without you." },
+  { name: "The Fog Overlord",emoji: "👑", min: 21, max: Infinity, blurb: "The fog answers to you now." },
+];
+function tierForLevel(level) {
+  if (level < 1) return null;
+  return LEVEL_TIERS.find(t => level >= t.min && level <= t.max) || LEVEL_TIERS[LEVEL_TIERS.length - 1];
+}
+// deterministic small "helpful" seed so counts are stable across reloads
+function seedHelpful(seedStr) {
+  let h = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0) % 7;
+}
+
+const KC_CONTACT = "contactsfbaysics@gmail.com";
+function mailto(subject, body) {
+  let s = `mailto:${KC_CONTACT}?subject=${encodeURIComponent(subject)}`;
+  if (body) s += `&body=${encodeURIComponent(body)}`;
+  return s;
+}
+// relative time (mirrors the app's timeAgo, scoped here so this file is standalone)
+function kcTimeAgo(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return m + "m ago";
+  const h = Math.round(m / 60);
+  if (h < 24) return h + "h ago";
+  return Math.round(h / 24) + "d ago";
+}
+
+// ── shared panel chrome ─────────────────────────────────────────
+function PanelHead({ title, onBack, onClose }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "calc(14px + env(safe-area-inset-top,0px)) 14px 12px",
+      flexShrink: 0, borderBottom: "1px solid color-mix(in srgb, var(--ink) 9%, transparent)" }}>
+      {onBack ? (
+        <button onClick={onBack} aria-label="Back" style={iconBtn}>
+          <ChevronIcon dir="left" size={20} />
+        </button>
+      ) : <div style={{ width: 36 }} />}
+      <div style={{ flex: 1, font: "700 18px var(--hand)", color: "var(--ink)", textAlign: "center" }}>{title}</div>
+      <button onClick={onClose} aria-label="Close" style={iconBtn}>
+        <XIcon size={17} />
+      </button>
+    </div>
+  );
+}
+const iconBtn = {
+  width: 36, height: 36, borderRadius: 999, border: "none", cursor: "pointer", flexShrink: 0,
+  background: "color-mix(in srgb, var(--ink) 7%, transparent)", color: "var(--ink)",
+  display: "flex", alignItems: "center", justifyContent: "center",
+};
+
+function MenuRow({ icon, label, sub, tint, onClick, href, external, accent }) {
+  const inner = (
+    <React.Fragment>
+      <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center",
+        justifyContent: "center", background: tint || "color-mix(in srgb, var(--accent) 14%, transparent)",
+        color: accent || "var(--accent)" }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+        <div style={{ font: "700 15px var(--hand)", color: "var(--ink)", lineHeight: 1.15 }}>{label}</div>
+        {sub && <div style={{ font: "11.5px var(--hand)", color: "var(--ink)", opacity: 0.55, marginTop: 1 }}>{sub}</div>}
+      </div>
+      <span style={{ color: "var(--ink)", opacity: 0.32 }}>
+        {external ? <ChevronIcon dir="right" size={15} /> : <ChevronIcon dir="right" size={16} />}
+      </span>
+    </React.Fragment>
+  );
+  const style = {
+    display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+    background: "var(--card)", border: "1.5px solid color-mix(in srgb, var(--ink) 9%, transparent)",
+    borderRadius: 14, padding: "11px 13px", cursor: "pointer", textDecoration: "none",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+  };
+  if (href) return <a href={href} style={style} target="_blank" rel="noopener noreferrer" onClick={onClick}>{inner}</a>;
+  return <button onClick={onClick} style={style}>{inner}</button>;
+}
+
+// ── menu (root settings list) ───────────────────────────────────
+function SettingsMenu({ account, go }) {
+  const level = account ? account.level || 0 : 0;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      {/* identity strip */}
+      <button onClick={() => go("account")} style={{
+        display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", cursor: "pointer",
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--card)), var(--card))",
+        border: "1.5px solid color-mix(in srgb, var(--accent) 22%, transparent)", borderRadius: 16, padding: "14px 14px", marginBottom: 3 }}>
+        <div style={{ width: 46, height: 46, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--accent)", color: "#fff", font: "700 19px var(--hand)" }}>
+          {account ? account.username.slice(0, 1).toUpperCase() : <UserIcon size={22} style={{ color: "#fff" }} />}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ font: "700 16px var(--hand)", color: "var(--ink)" }}>
+            {account ? account.username : "Create an account"}
+          </div>
+          <div style={{ font: "12px var(--hand)", color: "var(--ink)", opacity: 0.6, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {account ? `Level ${level} · post under your name` : "Post photos under your name & track contributions"}
+          </div>
+        </div>
+        <ChevronIcon dir="right" size={17} style={{ color: "var(--ink)", opacity: 0.4 }} />
+      </button>
+
+      <SectionLabel>Your fog</SectionLabel>
+      <MenuRow icon={<GalleryIcon size={20} />} label="My Contributions" sub="Photos you've shared & their thanks"
+        tint="color-mix(in srgb, #3f9c72 16%, transparent)" accent="#2f8f5e" onClick={() => go("contributions")} />
+      <MenuRow icon={<TrophyIcon size={20} />} label="My Trophies" sub="Your fog-spotting rank"
+        tint="color-mix(in srgb, #d6973a 18%, transparent)" accent="#c07e22" onClick={() => go("trophies")} />
+
+      <SectionLabel>Get involved</SectionLabel>
+      <MenuRow icon={<VideoIcon size={20} />} label="Host a Neighborhood Cam" sub="Stream your window — $ earned"
+        tint="color-mix(in srgb, #4f7bd6 16%, transparent)" accent="#3a63b8" external
+        href={mailto("Interested in hosting a neighborhood cam",
+          "Hi KarlCheck team,\n\nI'd like to host a neighborhood cam. My neighborhood is:\nMy setup (camera / view):\n\nThanks!")} />
+      <MenuRow icon={<MegaphoneIcon size={20} />} label="Interested in Ad Space" sub="Reach the whole foggy city"
+        tint="color-mix(in srgb, var(--accent) 15%, transparent)" external
+        href={mailto("ad space interest", "Hi KarlCheck team,\n\nI'm interested in advertising on KarlCheck. Here's a bit about us:\n")} />
+      <MenuRow icon={<MailIcon size={20} />} label="Submit Feedback" sub="Tell us what's broken or brilliant"
+        tint="color-mix(in srgb, var(--ink) 9%, transparent)" accent="var(--ink)" external
+        href={mailto("feedback/ bug", "What happened (or what you'd love to see):\n\nWhat were you doing when it happened:\n")} />
+
+      <div style={{ textAlign: "center", font: "11px var(--mono)", letterSpacing: 0.4, color: "var(--ink)", opacity: 0.35, padding: "12px 0 4px" }}>
+        KarlCheck · fog, verified by your neighbors
+      </div>
+    </div>
+  );
+}
+function SectionLabel({ children }) {
+  return <div style={{ font: "600 10.5px var(--mono)", letterSpacing: 1.4, textTransform: "uppercase",
+    color: "var(--ink)", opacity: 0.42, padding: "9px 4px 1px" }}>{children}</div>;
+}
+
+// ── account: create / profile ───────────────────────────────────
+function AccountView({ account, onSave, onLogout }) {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+
+  if (account) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "16px 4px" }}>
+        <div style={{ width: 84, height: 84, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--accent)", color: "#fff", font: "700 36px var(--hand)", boxShadow: "0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent)" }}>
+          {account.username.slice(0, 1).toUpperCase()}
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ font: "700 22px var(--hand)", color: "var(--ink)" }}>{account.username}</div>
+          <div style={{ font: "13px var(--hand)", color: "var(--ink)", opacity: 0.6, marginTop: 2 }}>{account.email}</div>
+        </div>
+        <div style={{ display: "flex", gap: 10, width: "100%", marginTop: 4 }}>
+          <Stat big label="Level" value={account.level || 0} />
+          <Stat big label="Photos shared" value={account.contributions || 0} />
+        </div>
+        <div style={{ font: "12.5px/1.5 var(--hand)", color: "var(--ink)", opacity: 0.6, textAlign: "center", maxWidth: 280, marginTop: 2 }}>
+          Your photos now post as <strong style={{ opacity: 0.9 }}>@{account.username}</strong> so neighbors know who's keeping watch.
+        </div>
+        <button onClick={onLogout} style={{
+          marginTop: 6, display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer",
+          background: "var(--card)", color: "var(--ink)", border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
+          padding: "11px 18px", borderRadius: 999, font: "700 14px var(--hand)" }}>
+          <LogoutIcon size={17} /> Log out
+        </button>
+      </div>
+    );
+  }
+
+  const submit = () => {
+    if (!username.trim()) return setErr("Pick a username.");
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Enter a valid email.");
+    if (pw.length < 4) return setErr("Password needs 4+ characters.");
+    onSave({ username: username.trim(), email: email.trim() });
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "8px 2px" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <KarlMascot size={52} mood="gleeful" style={{ color: "var(--accent)" }} />
+        <div style={{ font: "700 19px var(--hand)", color: "var(--ink)", textAlign: "center" }}>Join the fog watch</div>
+        <div style={{ font: "13px/1.5 var(--hand)", color: "var(--ink)", opacity: 0.6, textAlign: "center", maxWidth: 290 }}>
+          Create an account to post photos under your name, earn trophies, and track your contributions.
+        </div>
+      </div>
+      <Field label="Username" value={username} onChange={setUsername} placeholder="foggymcfogface" autoCapitalize="none" />
+      <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" autoCapitalize="none" />
+      <Field label="Password" value={pw} onChange={setPw} placeholder="••••••" type="password" />
+      {err && <div style={{ font: "12.5px var(--hand)", color: "#c8324b", textAlign: "center" }}>{err}</div>}
+      <button onClick={submit} style={{
+        marginTop: 2, cursor: "pointer", border: "none", background: "var(--accent)", color: "#fff",
+        padding: "14px", borderRadius: 13, font: "700 16px var(--hand)", boxShadow: "0 4px 14px color-mix(in srgb, var(--accent) 38%, transparent)" }}>
+        Create account
+      </button>
+      <div style={{ font: "10.5px/1.5 var(--mono)", color: "var(--ink)", opacity: 0.4, textAlign: "center", letterSpacing: 0.2 }}>
+        Demo only — your account is stored on this device, never sent anywhere.
+      </div>
+    </div>
+  );
+}
+function Field({ label, value, onChange, placeholder, type = "text", autoCapitalize }) {
+  return (
+    <label style={{ display: "block" }}>
+      <div style={{ font: "600 11px var(--mono)", letterSpacing: 1, textTransform: "uppercase", color: "var(--ink)", opacity: 0.5, marginBottom: 5 }}>{label}</div>
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type} autoCapitalize={autoCapitalize}
+        style={{ width: "100%", boxSizing: "border-box", font: "500 15px var(--hand)", color: "var(--ink)",
+          background: "var(--card)", border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
+          borderRadius: 12, padding: "12px 13px", outline: "none" }} />
+    </label>
+  );
+}
+function Stat({ label, value, big }) {
+  return (
+    <div style={{ flex: 1, textAlign: "center", background: "var(--card)", borderRadius: 13,
+      border: "1.5px solid color-mix(in srgb, var(--ink) 9%, transparent)", padding: big ? "13px 8px" : "10px 8px" }}>
+      <div style={{ font: `800 ${big ? 26 : 20}px var(--hand)`, color: "var(--ink)", lineHeight: 1 }}>{value}</div>
+      <div style={{ font: "11px var(--hand)", color: "var(--ink)", opacity: 0.55, marginTop: 3 }}>{label}</div>
+    </div>
+  );
+}
+
+// ── my contributions ────────────────────────────────────────────
+function ContributionsView({ account, contributions, onDelete, go }) {
+  if (!account) {
+    return (
+      <Gate go={go} icon={<GalleryIcon size={34} style={{ color: "var(--accent)" }} />}
+        title="Sign in to see your gallery"
+        body="Create an account to keep a history of every sky you've shared and the thanks you've earned." />
+    );
+  }
+  const mine = contributions.filter(c => c.author === account.username);
+  const totalHelpful = mine.reduce((s, c) => s + (c.helpful || 0), 0);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "6px 2px" }}>
+      <div style={{ display: "flex", gap: 10 }}>
+        <Stat label="Photos shared" value={mine.length} />
+        <Stat label="Likes earned" value={totalHelpful} />
+      </div>
+      {mine.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "30px 16px", color: "var(--ink)" }}>
+          <KarlMascot size={48} mood="sleepy" style={{ color: "var(--ink)", opacity: 0.4, margin: "0 auto 10px" }} />
+          <div style={{ font: "700 16px var(--hand)" }}>No contributions yet</div>
+          <div style={{ font: "13px/1.5 var(--hand)", opacity: 0.6, marginTop: 4, maxWidth: 250, marginInline: "auto" }}>
+            Tap a foggy neighborhood with no live cam and share today's view.
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+          {mine.slice().reverse().map(c => (
+            <div key={c.id} style={{ display: "flex", gap: 11, background: "var(--card)", borderRadius: 14,
+              border: "1.5px solid color-mix(in srgb, var(--ink) 9%, transparent)", padding: 9, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+              <img src={c.url} alt={c.hoodName} style={{ width: 84, height: 84, borderRadius: 10, objectFit: "cover", flexShrink: 0, background: "var(--ink)" }} />
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+                <div style={{ font: "700 15px var(--hand)", color: "var(--ink)" }}>{c.hoodName}</div>
+                <div style={{ font: "11.5px var(--hand)", color: "var(--ink)", opacity: 0.55 }}>{kcTimeAgo(c.ts)}</div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 1,
+                  font: "700 12.5px var(--hand)", color: "#c8324b" }}>
+                  <HeartIcon size={14} filled style={{ color: "#c8324b" }} /> {c.helpful || 0} like{(c.helpful || 0) === 1 ? "" : "s"}
+                </div>
+              </div>
+              <button onClick={() => onDelete(c.id)} aria-label="Delete photo" style={{
+                alignSelf: "flex-start", width: 32, height: 32, borderRadius: 9, border: "none", cursor: "pointer",
+                background: "color-mix(in srgb, #c8324b 10%, transparent)", color: "#c8324b",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <TrashIcon size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── my trophies ─────────────────────────────────────────────────
+function TrophiesView({ account, go }) {
+  if (!account) {
+    return (
+      <Gate go={go} icon={<TrophyIcon size={34} style={{ color: "#c07e22" }} />}
+        title="Sign in to earn trophies"
+        body="Every photo you share bumps your level. Create an account to start your climb to Fog Overlord." />
+    );
+  }
+  const level = account.level || 0;
+  const tier = tierForLevel(level);
+  const idx = tier ? LEVEL_TIERS.indexOf(tier) : -1;
+  // progress to next tier
+  let progress = 0, toNext = null, nextTier = null;
+  if (!tier) { progress = 0; nextTier = LEVEL_TIERS[0]; toNext = 1 - level; }
+  else if (tier.max === Infinity) { progress = 1; }
+  else {
+    const span = tier.max - tier.min + 1;
+    progress = (level - tier.min + 1) / span;
+    nextTier = LEVEL_TIERS[idx + 1];
+    toNext = tier.max + 1 - level;
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "6px 2px" }}>
+      {/* current rank hero */}
+      <div style={{ textAlign: "center", background: "linear-gradient(160deg, color-mix(in srgb, #d6973a 18%, var(--card)), var(--card))",
+        border: "1.5px solid color-mix(in srgb, #d6973a 26%, transparent)", borderRadius: 20, padding: "22px 18px" }}>
+        <div style={{ fontSize: 56, lineHeight: 1 }}>{tier ? tier.emoji : "🌥️"}</div>
+        <div style={{ font: "800 23px var(--hand)", color: "var(--ink)", marginTop: 8 }}>{tier ? tier.name : "Fogless"}</div>
+        <div style={{ font: "13px var(--hand)", color: "var(--ink)", opacity: 0.62, marginTop: 3 }}>
+          {tier ? tier.blurb : "Share your first photo to reach Level 1."}
+        </div>
+        <div style={{ display: "inline-block", marginTop: 12, font: "700 13px var(--mono)", letterSpacing: 1,
+          background: "var(--ink)", color: "var(--paper)", padding: "5px 13px", borderRadius: 999 }}>LEVEL {level}</div>
+        {/* progress bar */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ height: 9, borderRadius: 999, background: "color-mix(in srgb, var(--ink) 12%, transparent)", overflow: "hidden" }}>
+            <div style={{ width: `${Math.round(progress * 100)}%`, height: "100%", borderRadius: 999,
+              background: "linear-gradient(90deg, #d6973a, #c07e22)", transition: "width .5s" }} />
+          </div>
+          <div style={{ font: "11.5px var(--hand)", color: "var(--ink)", opacity: 0.6, marginTop: 6 }}>
+            {tier && tier.max === Infinity ? "Maxed out. Karl bows to you." :
+              nextTier ? `${toNext} more photo${toNext === 1 ? "" : "s"} → ${nextTier.emoji} ${nextTier.name}` : ""}
+          </div>
+        </div>
+      </div>
+
+      {/* all tiers */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        <SectionLabel>All ranks</SectionLabel>
+        {LEVEL_TIERS.map((t, i) => {
+          const reached = level >= t.min;
+          const current = tier === t;
+          return (
+            <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 13px", borderRadius: 14,
+              background: current ? "color-mix(in srgb, #d6973a 13%, var(--card))" : "var(--card)",
+              border: `1.5px solid ${current ? "color-mix(in srgb, #d6973a 38%, transparent)" : "color-mix(in srgb, var(--ink) 9%, transparent)"}`,
+              opacity: reached ? 1 : 0.5 }}>
+              <div style={{ fontSize: 26, filter: reached ? "none" : "grayscale(1)" }}>{t.emoji}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ font: "700 15px var(--hand)", color: "var(--ink)" }}>{t.name}</div>
+                <div style={{ font: "11.5px var(--mono)", letterSpacing: 0.4, color: "var(--ink)", opacity: 0.5 }}>
+                  Level {t.min}{t.max === Infinity ? "+" : `–${t.max}`}
+                </div>
+              </div>
+              {current && <span style={{ font: "700 10.5px var(--mono)", letterSpacing: 1, color: "#c07e22",
+                background: "color-mix(in srgb, #d6973a 20%, transparent)", padding: "4px 9px", borderRadius: 999 }}>YOU</span>}
+              {reached && !current && <span style={{ color: "#2f8f5e", font: "700 14px var(--hand)" }}>✓</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Gate({ icon, title, body, go }) {
+  return (
+    <div style={{ textAlign: "center", padding: "34px 18px", color: "var(--ink)" }}>
+      <div style={{ width: 70, height: 70, borderRadius: 999, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "color-mix(in srgb, var(--ink) 6%, transparent)" }}>{icon}</div>
+      <div style={{ font: "700 18px var(--hand)" }}>{title}</div>
+      <div style={{ font: "13px/1.5 var(--hand)", opacity: 0.62, marginTop: 6, maxWidth: 270, marginInline: "auto" }}>{body}</div>
+      <button onClick={() => go("account")} style={{
+        marginTop: 18, cursor: "pointer", border: "none", background: "var(--accent)", color: "#fff",
+        padding: "13px 22px", borderRadius: 999, font: "700 15px var(--hand)",
+        boxShadow: "0 4px 14px color-mix(in srgb, var(--accent) 38%, transparent)" }}>
+        Create an account
+      </button>
+    </div>
+  );
+}
+
+// ── top-level settings panel (slides in from right) ─────────────
+function SettingsPanel({ open, onClose, account, onSave, onLogout, contributions, onDelete, narrow = false }) {
+  const [view, setView] = useState("menu");
+  useEffect(() => { if (open) setView("menu"); }, [open]);
+  const titles = { menu: "Settings", account: account ? "Account" : "Create Account", contributions: "My Contributions", trophies: "My Trophies" };
+  const go = (v) => setView(v);
+  const narrowStyle = narrow ? { top: 0, right: 0, bottom: 0, left: "auto", width: 360 } : { inset: 0 };
+  return (
+    <div style={{ position: "absolute", zIndex: 180, display: "flex", flexDirection: "column",
+      background: "var(--paper)", color: "var(--ink)",
+      transform: open ? "translateX(0)" : "translateX(100%)",
+      transition: "transform .3s cubic-bezier(.4,0,.2,1)", pointerEvents: open ? "auto" : "none",
+      boxShadow: open ? "-12px 0 40px rgba(0,0,0,0.18)" : "none", ...narrowStyle }}>
+      <PanelHead title={titles[view]} onBack={view === "menu" ? null : () => setView("menu")} onClose={onClose} />
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 14px calc(20px + env(safe-area-inset-bottom,0px))" }}>
+        {view === "menu" && <SettingsMenu account={account} go={go} />}
+        {view === "account" && <AccountView account={account} onSave={onSave} onLogout={onLogout} />}
+        {view === "contributions" && <ContributionsView account={account} contributions={contributions} onDelete={onDelete} go={go} />}
+        {view === "trophies" && <TrophiesView account={account} go={go} />}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { SettingsPanel, LEVEL_TIERS, tierForLevel, seedHelpful });
+
+  </script>
+
+  <script type="text/babel">
+/* KarlCheck — main app */
+const { useState, useRef, useEffect, useCallback } = React;
+
+const MAP_W = 2744, MAP_H = 1568;
+
+// [paper, card, ink, accent, spot]
+const PALETTES = {
+  classic: ["#eae8e4", "#f6f3ee", "#34293a", "#863a5c", "#c25c6e"],
+  foggy:   ["#e6e7ea", "#f2f3f5", "#28304a", "#45598c", "#7d93c0"],
+  sunset:  ["#efe6da", "#f8f1e7", "#4a3326", "#c06a3b", "#d99463"],
+};
+
+// hoods that get a floating status badge on the map overview
+const BADGE_IDS = ["sunset","richmond","golden-gate-park","twin-peaks","marina","mission","bernal","fidi","southeast","noe-valley","presidio"];
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// point-in-polygon (ray cast) over the traced neighborhood regions
+function pointInPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function hoodAt(mx, my) {
+  const R = window.KARL_REGION_PTS || {};
+  for (const h of window.KARL_HOODS) {
+    const p = R[h.id];
+    if (p && pointInPoly(mx, my, p)) return h.id;
+  }
+  return null;
+}
+
+// ── citywide verdict ───────────────────────────────────────────
+function cityVerdict(hoods) {
+  const foggy = hoods.filter(h => h.score >= 70).length;
+  const clear = hoods.filter(h => h.score <= 22).length;
+  const avg = Math.round(hoods.reduce((s,h)=>s+h.score,0) / hoods.length);
+  let head, status;
+  if (avg >= 62) { head = "Heavy Karl citywide"; status = "karl"; }
+  else if (avg >= 42) { head = "Patchy Karl"; status = "partly"; }
+  else if (avg >= 26) { head = "Mostly clear"; status = "partly"; }
+  else { head = "Karl's taken the day off"; status = "sun"; }
+  return { head, status, foggy, clear, avg };
+}
+
+// ── community photo helpers ────────────────────────────────────
+function loadPhotos() {
+  try { return JSON.parse(localStorage.getItem("kc-photos") || "{}"); } catch (e) { return {}; }
+}
+function loadAccount() {
+  try { return JSON.parse(localStorage.getItem("kc-account") || "null"); } catch (e) { return null; }
+}
+function loadContributions() {
+  try { return JSON.parse(localStorage.getItem("kc-contributions") || "[]"); } catch (e) { return []; }
+}
+function loadLiked() {
+  try { return new Set(JSON.parse(localStorage.getItem("kc-liked") || "[]")); } catch (e) { return new Set(); }
+}
+// fun anonymous personas, themed to the neighborhood + stable per photo
+const KC_ROLES = ["Dog Walker", "Surfer", "Commuter", "Barista", "Stoop Sitter", "Fog Chaser",
+  "Window Watcher", "Jogger", "Cyclist", "Night Owl", "Rooftop Lurker", "Coffee Runner",
+  "Hill Climber", "Local", "Burrito Enthusiast", "Tram Rider", "Early Riser", "Cable Car Commuter"];
+function kcHash(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) | 0; } return Math.abs(h); }
+function personaFor(hoodName, seed) {
+  return `a ${hoodName} ${KC_ROLES[kcHash(seed) % KC_ROLES.length]}`;
+}
+// draw the uploaded image to a canvas, burn in neighborhood + date/time (+ author), return jpeg dataURL
+function stampPhoto(file, hoodName, author, cb) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 1000;
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const now = new Date();
+      const ds = now.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      const ts = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      const fs = Math.max(14, Math.round(w * 0.030));
+      const pad = Math.round(fs * 0.8);
+      const barH = fs * 2.2 + pad;
+      const g = ctx.createLinearGradient(0, h - barH, 0, h);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.78)");
+      ctx.fillStyle = g; ctx.fillRect(0, h - barH, w, barH);
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = "#fff";
+      ctx.font = `700 ${Math.round(fs * 1.15)}px ui-monospace, "DM Mono", monospace`;
+      ctx.fillText(hoodName, pad, h - pad - fs * 1.15);
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.font = `500 ${fs}px ui-monospace, "DM Mono", monospace`;
+      ctx.fillText(`${ds} · ${ts}`, pad, h - pad);
+      if (author) {
+        const tag = `@${author}`;
+        ctx.textAlign = "right";
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        ctx.font = `700 ${fs}px ui-monospace, "DM Mono", monospace`;
+        ctx.fillText(tag, w - pad, h - pad);
+        ctx.textAlign = "left";
+      }
+
+      cb(canvas.toDataURL("image/jpeg", 0.8), now.toISOString());
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// OFFLINE community state: shows the neighbor-submitted photo, or a prompt to add one.
+// `fs` = fullscreen (roomy); otherwise sized to fit the 236px sheet tile.
+function OfflineCam({ hood, photo, onRequestPhoto, big, fs, contrib, liked, onLike }) {
+  const ask = (e) => { e.stopPropagation(); onRequestPhoto && onRequestPhoto(hood); };
+
+  if (photo) {
+    const credit = contrib ? (contrib.anon ? `by ${contrib.author}` : `by @${contrib.author}`) : null;
+    const likes = contrib ? (contrib.helpful || 0) : 0;
+    return (
+      <React.Fragment>
+        <img src={photo.url} alt={`${hood.name} community view`} draggable="false"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: big ? 92 : 70,
+          background: "linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.6))", pointerEvents: "none" }} />
+        {/* like + credit, bottom-left */}
+        <div style={{ position: "absolute", left: 10, bottom: 10, zIndex: 5, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+          {contrib && onLike && (
+            <button onClick={(e) => { e.stopPropagation(); onLike(contrib.id); }} style={{
+              display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", border: "none",
+              background: liked ? "var(--accent)" : "rgba(0,0,0,0.46)", color: "#fff",
+              padding: big ? "8px 13px" : "6px 10px", borderRadius: 999, backdropFilter: "blur(4px)",
+              font: `700 ${big ? 13 : 11.5}px var(--hand)`, transition: "background .18s" }}>
+              <HeartIcon size={big ? 16 : 14} filled={liked} /> {likes}
+            </button>
+          )}
+          {credit && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, font: `600 ${big ? 12 : 10.5}px var(--hand)`,
+              color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6)", maxWidth: big ? 280 : 180 }}>
+              <CameraIcon size={big ? 14 : 12} style={{ color: "#fff", opacity: 0.9, flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{credit}</span>
+            </div>
+          )}
+        </div>
+        <button onClick={ask} style={{
+          position: "absolute", bottom: 10, right: 10, zIndex: 5, cursor: "pointer",
+          display: "inline-flex", alignItems: "center", gap: 6, border: "none",
+          background: "rgba(0,0,0,0.5)", color: "#fff", padding: "7px 12px", borderRadius: 999,
+          font: `600 ${big ? 12 : 10.5}px var(--mono)`, letterSpacing: 0.5, backdropFilter: "blur(4px)" }}>
+          ↻ Update view
+        </button>
+      </React.Fragment>
+    );
+  }
+
+  return (
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: fs ? 13 : 7, textAlign: "center",
+      padding: fs ? "0 34px" : "10px 18px", color: "#fff", overflow: "hidden" }}>
+      <KarlMascot size={fs ? 54 : 36} mood="sleepy" style={{ color: "rgba(255,255,255,0.6)", flexShrink: 0 }} />
+      <div style={{ font: `700 ${fs ? 23 : 16}px var(--hand)`, color: "#fff" }}>Help your neighbors out!</div>
+      <div style={{ font: `${fs ? 15 : 12}px/1.4 var(--hand)`, color: "rgba(255,255,255,0.82)", maxWidth: fs ? 320 : 250 }}>
+        Snap or upload a quick pic to show how Karl is looking today in {hood.name}.
+      </div>
+      <button onClick={ask} style={{
+        marginTop: fs ? 4 : 2, cursor: "pointer", border: "none",
+        display: "inline-flex", alignItems: "center", gap: 8,
+        background: "var(--accent)", color: "#fff", padding: fs ? "13px 22px" : "9px 16px",
+        borderRadius: 999, font: `700 ${fs ? 16 : 13}px var(--hand)`, boxShadow: "0 3px 12px rgba(0,0,0,0.3)" }}>
+        <CameraIcon size={fs ? 19 : 15} /> Share Today's View
+      </button>
+    </div>
+  );
+}
+
+// ── live window-cam placeholder ────────────────────────────────
+function CamPlaceholder({ host, height = 168, big = false, onExpand, liveUrl, embedUrl, embed = true, poster, hood, photo, onRequestPhoto, contrib, liked, onLike }) {
+  const embeddable = embedUrl || (liveUrl && embed !== false);
+  const frameSrc = embedUrl || liveUrl;
+  const linkOnly = liveUrl && embed === false && !embedUrl;
+  const offline = !liveUrl;
+  const isLive = embeddable || linkOnly;
+  const badgeText = isLive ? "LIVE" : (photo ? "COMMUNITY" : "OFFLINE");
+  return (
+    <div onClick={onExpand} style={{
+      position: "relative", height, borderRadius: 14, overflow: "hidden",
+      background: "var(--ink)",
+      backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 11px, rgba(255,255,255,0.11) 11px 22px)",
+      border: "1.5px solid color-mix(in srgb, var(--ink) 30%, transparent)",
+      cursor: onExpand ? "pointer" : "default",
+    }}>
+      {embeddable && (
+        <iframe src={frameSrc} title={`Live cam — ${host}`} scrolling="no" allow="autoplay"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
+      )}
+      {linkOnly && poster && (
+        <img src={poster} alt={`${host} preview`} draggable="false"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.55 }} />
+      )}
+      {linkOnly && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 9, padding: "0 16px", textAlign: "center",
+          background: "linear-gradient(rgba(20,16,22,0.25), rgba(20,16,22,0.55))" }}>
+          <a href={liveUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{
+            display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none",
+            background: "#fff", color: "#1a141d", padding: big ? "11px 18px" : "9px 14px", borderRadius: 999,
+            font: `700 ${big ? 15 : 13}px var(--hand)`, boxShadow: "0 3px 12px rgba(0,0,0,0.3)" }}>
+            Watch live ↗
+          </a>
+          <div style={{ font: `${big ? 12 : 10.5}px var(--mono)`, letterSpacing: 0.8, color: "rgba(255,255,255,0.92)" }}>opens {host}</div>
+        </div>
+      )}
+      {offline && <OfflineCam hood={hood} photo={photo} onRequestPhoto={onRequestPhoto} big={big} fs={false} contrib={contrib} liked={liked} onLike={onLike} />}
+      {/* transparent layer so a tap expands instead of interacting with the feed */}
+      {embeddable && onExpand && <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} />}
+      <div className="kc-shimmer" />
+      <div style={{ position: "absolute", top: 10, left: 10, display: "flex", alignItems: "center", gap: 6,
+        background: "rgba(0,0,0,0.34)", padding: "4px 9px", borderRadius: 999, backdropFilter: "blur(3px)" }}>
+        {isLive
+          ? <span className="kc-livedot" />
+          : <span style={{ width: 7, height: 7, borderRadius: 999, background: photo ? "#5fb88e" : "rgba(255,255,255,0.45)" }} />}
+        <span style={{ font: "600 11px var(--mono)", letterSpacing: 1.2, color: "#fff" }}>{badgeText}</span>
+      </div>
+      {onExpand && (
+        <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 5,
+          background: "rgba(0,0,0,0.34)", padding: "5px 9px", borderRadius: 999, backdropFilter: "blur(3px)" }}>
+          <ExpandIcon size={13} />
+          <span style={{ font: "600 9.5px var(--mono)", letterSpacing: 1, color: "#fff" }}>FULLSCREEN</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Karl score gauge ───────────────────────────────────────────
+function KarlScore({ score }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+        <span style={{ font: "600 11px var(--mono)", letterSpacing: 1, color: "var(--ink)", opacity: 0.6 }}>KARL&nbsp;SCORE</span>
+        <span style={{ font: "700 17px var(--hand)", color: "var(--accent)" }}>{score}<span style={{ fontSize: 11, opacity: 0.5 }}>/100</span></span>
+      </div>
+      <div style={{ position: "relative", height: 9, borderRadius: 999, background: "color-mix(in srgb, var(--ink) 13%, transparent)", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, width: `${score}%`, borderRadius: 999,
+          background: "linear-gradient(90deg, var(--spot), var(--accent))" }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3, font: "10px var(--mono)", opacity: 0.45, color: "var(--ink)" }}>
+        <span>clear</span><span>full Karl</span>
+      </div>
+    </div>
+  );
+}
+
+function StatTile({ label, value, unit }) {
+  return (
+    <div style={{ flex: 1, background: "color-mix(in srgb, var(--ink) 6%, transparent)", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+      <div style={{ font: "700 22px var(--hand)", color: "var(--ink)", lineHeight: 1 }}>{value}<span style={{ fontSize: 12, opacity: 0.55 }}>{unit}</span></div>
+      <div style={{ font: "500 9.5px var(--mono)", letterSpacing: 0.8, color: "var(--ink)", opacity: 0.5, marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
+function KarlQuote({ blurb, mood }) {
+  return (
+    <div style={{ display: "flex", gap: 11, alignItems: "flex-start",
+      background: "color-mix(in srgb, var(--accent) 9%, transparent)",
+      border: "1.5px solid color-mix(in srgb, var(--accent) 22%, transparent)",
+      borderRadius: 16, padding: "13px 14px" }}>
+      <div style={{ color: "var(--accent)", flexShrink: 0, marginTop: 1 }}><KarlMascot size={40} mood={mood} /></div>
+      <div>
+        <div style={{ font: "600 10.5px var(--mono)", letterSpacing: 1, color: "var(--accent)", marginBottom: 2 }}>KARL SAYS</div>
+        <div style={{ font: "17px/1.35 var(--hand)", color: "var(--ink)" }}>“{blurb}”</div>
+      </div>
+    </div>
+  );
+}
+
+// ── sheet header (shared) ──────────────────────────────────────
+function SheetHead({ hood, st, tempStr, small }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ color: "var(--accent)" }}><WeatherIcon status={hood.status} size={small ? 38 : 52} /></div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ font: `700 ${small ? 22 : 27}px/1.02 var(--hand)`, color: "var(--ink)", letterSpacing: 0.2 }}>{hood.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden" }}>
+          <span style={{ font: "600 11px var(--mono)", letterSpacing: 1, color: "var(--accent)" }}>{st.label.toUpperCase()}</span>
+          <span style={{ width: 3, height: 3, borderRadius: 9, background: "var(--ink)", opacity: 0.35 }} />
+          <span style={{ font: "13px var(--hand)", color: "var(--ink)", opacity: 0.7 }}>{st.vibe}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{ font: "700 30px var(--hand)", color: "var(--ink)", lineHeight: 1 }}>{tempStr}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── ad slot (sponsor placeholder) ──────────────────────────────
+function AdSlot() {
+  return (
+    <a href="mailto:contactsfbaysics@gmail.com?subject=Ad%20space%20interest"
+      style={{ display: "block", position: "relative", borderRadius: 14, padding: "20px 14px 18px",
+      border: "1.6px dashed color-mix(in srgb, var(--ink) 26%, transparent)",
+      backgroundImage: "repeating-linear-gradient(135deg, color-mix(in srgb, var(--ink) 5%, transparent) 0 9px, transparent 9px 18px)",
+      textAlign: "center", textDecoration: "none", cursor: "pointer" }}>
+      <div style={{ position: "absolute", top: 8, left: 11, font: "600 9px var(--mono)", letterSpacing: 1.4, color: "var(--ink)", opacity: 0.42 }}>SPONSORED</div>
+      <div style={{ font: "17px var(--hand)", color: "var(--ink)", opacity: 0.72 }}>Keep it local. Your ad here.</div>
+      <div style={{ font: "500 10px var(--mono)", letterSpacing: 0.6, color: "var(--ink)", opacity: 0.42, marginTop: 4 }}>300 × 100 · sponsor this neighborhood’s feed</div>
+    </a>
+  );
+}
+
+// ── detail: live cam + ad only ─────────────────────────────────
+function SheetBody({ hood, onExpand, photo, onRequestPhoto, contrib, liked, onLike }) {
+  const isLive = !!hood.liveUrl;
+  const tag = isLive ? "LIVE" : (photo ? "COMMUNITY" : "OFFLINE");
+  const tagColor = isLive ? "#e0445b" : (photo ? "#3f9c72" : "color-mix(in srgb, var(--ink) 45%, transparent)");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 9 }}>
+        <div style={{ font: "700 24px/1 var(--hand)", color: "var(--ink)", letterSpacing: 0.2 }}>{hood.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, font: "600 10px var(--mono)", letterSpacing: 1, color: tagColor }}>
+          {isLive
+            ? <span className="kc-livedot" />
+            : <span style={{ width: 6, height: 6, borderRadius: 999, background: photo ? "#3f9c72" : "color-mix(in srgb, var(--ink) 35%, transparent)" }} />}
+          {tag}
+        </div>
+      </div>
+      <CamPlaceholder host={hood.host} height={236} big onExpand={() => onExpand(hood)} liveUrl={hood.liveUrl} embedUrl={hood.embedUrl} embed={hood.embed} poster={hood.poster} hood={hood} photo={photo} onRequestPhoto={onRequestPhoto} contrib={contrib} liked={liked} onLike={onLike} />
+      <AdSlot />
+    </div>
+  );
+}
+
+function BottomSheet({ hood, onClose, onExpand, photo, onRequestPhoto, contrib, liked, onLike }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 80, pointerEvents: hood ? "auto" : "none" }}>
+      <div onClick={onClose} style={{
+        position: "absolute", inset: 0, background: "rgba(20,16,22,0.32)",
+        opacity: hood ? 1 : 0, transition: "opacity .3s", backdropFilter: hood ? "blur(1.5px)" : "none" }} />
+      <div className={hood ? "kc-sheet-in" : ""} style={{
+        position: "absolute", left: 0, right: 0, bottom: 0,
+        transform: hood ? "translateY(0)" : "translateY(110%)",
+        transition: "transform .42s cubic-bezier(.22,1,.36,1)",
+        background: "var(--card)", borderRadius: "26px 26px 0 0",
+        boxShadow: "0 -10px 40px rgba(0,0,0,0.22)",
+        padding: "10px 18px 30px", maxHeight: "82%", overflowY: "auto",
+      }}>
+        <div style={{ display: "flex", justifyContent: "center", paddingBottom: 12 }}>
+          <div style={{ width: 38, height: 5, borderRadius: 9, background: "color-mix(in srgb, var(--ink) 22%, transparent)" }} />
+        </div>
+        {hood && <SheetBody hood={hood} onExpand={onExpand} photo={photo} onRequestPhoto={onRequestPhoto} contrib={contrib} liked={liked} onLike={onLike} />}
+      </div>
+    </div>
+  );
+}
+
+// ── floating status badge on the map ───────────────────────────
+function MapBadge({ hood, x, y, selected, onTap }) {
+  const tval = hood.temp;
+  return (
+    <button onClick={onTap} className="kc-badge" style={{
+      position: "absolute", left: x, top: y, transform: "translate(-50%,-50%)",
+      display: "flex", alignItems: "center", gap: 5, padding: "4px 9px 4px 5px",
+      borderRadius: 999, border: "1.5px solid color-mix(in srgb, var(--ink) 18%, transparent)",
+      background: selected ? "var(--accent)" : "var(--card)",
+      color: selected ? "var(--card)" : "var(--ink)",
+      boxShadow: "0 3px 9px rgba(0,0,0,0.16)", cursor: "pointer", zIndex: selected ? 30 : 20,
+      transition: "background .2s, transform .2s" }}>
+      <WeatherIcon status={hood.status} size={20} sw={2.4} rough={false} />
+      <span style={{ font: "700 13px var(--hand)", lineHeight: 1 }}>{tval}°</span>
+    </button>
+  );
+}
+
+// ── fullscreen live-cam view ───────────────────────────────────
+function FullscreenCam({ hood, onMinimize, onClose, photo, onRequestPhoto, contrib, liked, onLike }) {
+  const open = !!hood;
+  const isLive = hood && !!hood.liveUrl;
+  const badgeText = !hood ? "" : (isLive ? "LIVE" : (photo ? "COMMUNITY" : "OFFLINE"));
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 200, pointerEvents: open ? "auto" : "none",
+      opacity: open ? 1 : 0, transition: "opacity .28s", background: "var(--ink)" }}>
+      {hood && (
+        <div style={{ position: "absolute", inset: 0, overflow: "hidden",
+          backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 14px, rgba(255,255,255,0.11) 14px 28px)" }}>
+          <div className="kc-shimmer" />
+
+          {hood.liveUrl && (hood.embedUrl || hood.embed !== false) && (
+            <iframe src={hood.embedUrl || hood.liveUrl} title={`Live cam — ${hood.host}`}
+              allow="autoplay"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none", background: "#000" }} />
+          )}
+          {hood.liveUrl && hood.embed === false && !hood.embedUrl && (
+            <div style={{ position: "absolute", inset: 0 }}>
+              {hood.poster && (
+                <img src={hood.poster} alt={`${hood.host} preview`} draggable="false"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
+              )}
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: 16, padding: "0 28px", textAlign: "center",
+                background: "linear-gradient(rgba(20,16,22,0.3), rgba(20,16,22,0.6))" }}>
+                <div style={{ font: "700 24px var(--hand)", color: "#fff" }}>{hood.host}</div>
+                <div style={{ font: "13px/1.5 var(--hand)", color: "rgba(255,255,255,0.82)", maxWidth: 280 }}>
+                  This feed plays on the provider's site — tap below to watch it live.
+                </div>
+                <a href={hood.liveUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{
+                  display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none",
+                  background: "#fff", color: "#1a141d", padding: "13px 22px", borderRadius: 999,
+                  font: "700 16px var(--hand)", boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
+                  Watch live ↗
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* LIVE / status badge */}
+          <div style={{ position: "absolute", top: "calc(14px + env(safe-area-inset-top, 0px))", left: 16, display: "flex", alignItems: "center", gap: 7, zIndex: 3,
+            background: "rgba(0,0,0,0.4)", padding: "6px 12px", borderRadius: 999, backdropFilter: "blur(4px)" }}>
+            {isLive
+              ? <span className="kc-livedot" />
+              : <span style={{ width: 7, height: 7, borderRadius: 999, background: photo ? "#5fb88e" : "rgba(255,255,255,0.45)" }} />}
+            <span style={{ font: "600 12px var(--mono)", letterSpacing: 1.4, color: "#fff" }}>{badgeText}</span>
+          </div>
+
+          {/* controls: minimize + close */}
+          <div style={{ position: "absolute", top: "calc(12px + env(safe-area-inset-top, 0px))", right: 14, display: "flex", gap: 9, zIndex: 3 }}>
+            <button onClick={onMinimize} aria-label="Minimize" style={{
+              width: 42, height: 42, borderRadius: 999, border: "none", cursor: "pointer",
+              background: "rgba(0,0,0,0.42)", color: "#fff", display: "flex", alignItems: "center",
+              justifyContent: "center", backdropFilter: "blur(4px)" }}>
+              <MinimizeIcon size={18} />
+            </button>
+            <button onClick={onClose} aria-label="Close" style={{
+              width: 42, height: 42, borderRadius: 999, border: "none", cursor: "pointer",
+              background: "rgba(0,0,0,0.42)", color: "#fff", display: "flex", alignItems: "center",
+              justifyContent: "center", backdropFilter: "blur(4px)" }}>
+              <XIcon size={19} />
+            </button>
+          </div>
+
+          {/* center: offline community state (when no live feed) */}
+          {!hood.liveUrl && (
+            <OfflineCam hood={hood} photo={photo} onRequestPhoto={onRequestPhoto} big fs contrib={contrib} liked={liked} onLike={onLike} />
+          )}
+
+          {/* bottom caption */}
+          <div style={{ position: "absolute", bottom: "calc(18px + env(safe-area-inset-bottom, 0px))", left: 16, right: 16,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            font: "500 11px var(--mono)", color: "rgba(255,255,255,0.6)", letterSpacing: 0.5 }}>
+            {hood.liveUrl ? (
+              <a href={hood.liveUrl} target="_blank" rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()} style={{
+                display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none",
+                background: "rgba(0,0,0,0.42)", color: "#fff", padding: "7px 12px", borderRadius: 999,
+                font: "600 11px var(--mono)", letterSpacing: 0.6, backdropFilter: "blur(4px)", pointerEvents: "auto" }}>
+                Open live feed ↗
+              </a>
+            ) : (
+              <span>{photo ? "neighbor photo" : "awaiting a neighbor's photo"}</span>
+            )}
+            <span>tap ⤡ to shrink · ✕ to close</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// relative time for community photos, e.g. "12m ago"
+function timeAgo(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return m + "m ago";
+  const h = Math.round(m / 60);
+  if (h < 24) return h + "h ago";
+  return Math.round(h / 24) + "d ago";
+}
+
+// small freshness badge pinned to a neighborhood on the map
+function MapStatusBadge({ hood, photo, x, y }) {
+  const isLive = !!hood.liveUrl;
+  let dot, label, fg;
+  if (isLive) {
+    dot = <span style={{ width: 5, height: 5, borderRadius: 999, background: "#e0445b" }} className="kc-livedot" />;
+    label = "LIVE"; fg = "#c8324b";
+  } else if (photo) {
+    dot = <CameraIcon size={8} sw={2.4} style={{ color: "#2f8f5e" }} />;
+    label = timeAgo(photo.ts); fg = "#2f8f5e";
+  } else {
+    dot = <span style={{ width: 5, height: 5, borderRadius: 999, background: "color-mix(in srgb, var(--ink) 35%, transparent)" }} />;
+    label = "?"; fg = "color-mix(in srgb, var(--ink) 55%, transparent)";
+  }
+  return (
+    <div style={{ position: "absolute", left: x, top: y, transform: "translate(-50%,-50%)",
+      display: "flex", alignItems: "center", gap: 3, padding: "1.5px 5px 1.5px 4px",
+      background: "color-mix(in srgb, var(--card) 92%, transparent)", color: fg,
+      border: "1px solid color-mix(in srgb, var(--ink) 12%, transparent)", borderRadius: 999,
+      font: "600 7px var(--mono)", letterSpacing: 0.4, whiteSpace: "nowrap",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.16)", pointerEvents: "none", zIndex: 30 }}>
+      {dot}<span>{label}</span>
+    </div>
+  );
+}
+
+// ── share popover (fallback when native share / clipboard unavailable) ──
+function SharePopover({ open, onClose }) {
+  const inputRef = useRef(null);
+  const [copied, setCopied] = useState(false);
+  const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app';
+  useEffect(() => {
+    if (open) {
+      setCopied(false);
+      setTimeout(() => { if (inputRef.current) { inputRef.current.focus(); inputRef.current.select(); } }, 60);
+    }
+  }, [open]);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(url); setCopied(true); return; } catch (e) {}
+    try {
+      const ta = inputRef.current; ta.focus(); ta.select();
+      document.execCommand("copy"); setCopied(true);
+    } catch (e) {}
+  };
+  const shareText = encodeURIComponent("KarlCheck — fog, verified by your neighbors. ");
+  const enc = encodeURIComponent(url);
+  const links = [
+    { label: "Messages", href: `sms:&body=${shareText}${enc}` },
+    { label: "Email", href: `mailto:?subject=${encodeURIComponent("KarlCheck")}&body=${shareText}${enc}` },
+    { label: "X", href: `https://twitter.com/intent/tweet?text=${shareText}&url=${enc}` },
+  ];
+  return (
+    <div onClick={onClose} onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} style={{
+      position: "absolute", inset: 0, zIndex: 90, display: "flex", alignItems: "flex-end",
+      pointerEvents: open ? "auto" : "none", opacity: open ? 1 : 0, transition: "opacity .22s",
+      background: "rgba(20,16,22,0.28)" }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        margin: "0 12px 14px", width: "calc(100% - 24px)", background: "var(--card)",
+        borderRadius: 18, boxShadow: "0 10px 34px rgba(0,0,0,0.26)", padding: "16px 16px 14px",
+        transform: open ? "translateY(0)" : "translateY(12px)", transition: "transform .26s cubic-bezier(.22,1,.36,1)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ font: "700 17px var(--hand)", color: "var(--ink)" }}>Share KarlCheck</div>
+          <button onClick={onClose} aria-label="Close" style={{
+            width: 28, height: 28, borderRadius: 999, border: "none", cursor: "pointer",
+            background: "color-mix(in srgb, var(--ink) 8%, transparent)", color: "var(--ink)",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <XIcon size={14} />
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <input ref={inputRef} readOnly value={url} onFocus={e => e.target.select()} style={{
+            flex: 1, minWidth: 0, font: "500 12px var(--mono)", color: "var(--ink)",
+            background: "color-mix(in srgb, var(--ink) 5%, transparent)", border: "1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)",
+            borderRadius: 10, padding: "10px 11px" }} />
+          <button onClick={copy} style={{
+            flexShrink: 0, cursor: "pointer", border: "none", borderRadius: 10, padding: "0 16px",
+            background: copied ? "#3f9c72" : "var(--accent)", color: "#fff", font: "700 13px var(--hand)", letterSpacing: 0.3 }}>
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {links.map(l => (
+            <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" onClick={onClose} style={{
+              flex: 1, textAlign: "center", textDecoration: "none", borderRadius: 10, padding: "10px 0",
+              background: "color-mix(in srgb, var(--ink) 6%, transparent)", color: "var(--ink)",
+              font: "600 12px var(--hand)", letterSpacing: 0.2 }}>
+              {l.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── capture flow: choose source, then upload or use webcam ──────
+function CaptureChooser({ open, hoodName, onClose, onTakePhoto, onUpload }) {
+  return (
+    <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 210, display: "flex", alignItems: "flex-end",
+      pointerEvents: open ? "auto" : "none", opacity: open ? 1 : 0, transition: "opacity .2s", background: "rgba(20,16,22,0.32)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ margin: "0 10px 10px", width: "calc(100% - 20px)",
+        transform: open ? "translateY(0)" : "translateY(14px)", transition: "transform .26s cubic-bezier(.22,1,.36,1)" }}>
+        <div style={{ background: "var(--card)", borderRadius: 18, overflow: "hidden", boxShadow: "0 12px 34px rgba(0,0,0,0.26)" }}>
+          <div style={{ textAlign: "center", padding: "14px 16px 8px", font: "700 15px var(--hand)", color: "var(--ink)" }}>
+            Share today's view{hoodName ? ` · ${hoodName}` : ""}
+          </div>
+          <button onClick={onTakePhoto} style={chooserRow}>
+            <CameraIcon size={20} style={{ color: "var(--accent)" }} /> <span>Take a Photo</span>
+          </button>
+          <div style={{ height: 1, background: "color-mix(in srgb, var(--ink) 8%, transparent)" }} />
+          <button onClick={onUpload} style={chooserRow}>
+            <GalleryIcon size={20} style={{ color: "var(--accent)" }} /> <span>Upload from Library</span>
+          </button>
+        </div>
+        <button onClick={onClose} style={{ ...chooserRow, marginTop: 8, borderRadius: 18, background: "var(--card)",
+          justifyContent: "center", font: "700 15px var(--hand)", boxShadow: "0 8px 22px rgba(0,0,0,0.16)" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+const chooserRow = {
+  display: "flex", alignItems: "center", gap: 11, width: "100%", border: "none", cursor: "pointer",
+  background: "transparent", color: "var(--ink)", padding: "15px 18px", font: "600 15px var(--hand)", textAlign: "left",
+};
+
+function CameraModal({ open, hoodName, onClose, onCapture }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setErr("");
+    (async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("no api");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}); }
+      } catch (e) { if (!cancelled) setErr("Camera unavailable here — check browser permissions, or upload a photo instead."); }
+    })();
+    return () => { cancelled = true; if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; } };
+  }, [open]);
+  const snap = () => {
+    const v = videoRef.current; if (!v || !v.videoWidth) return;
+    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext("2d").drawImage(v, 0, 0);
+    c.toBlob(b => { if (b) onCapture(new File([b], "karl-cam.jpg", { type: "image/jpeg" })); }, "image/jpeg", 0.9);
+  };
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 230, background: "#000",
+      pointerEvents: open ? "auto" : "none", opacity: open ? 1 : 0, transition: "opacity .22s",
+      display: "flex", flexDirection: "column" }}>
+      <video ref={videoRef} playsInline muted style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      <div style={{ position: "absolute", top: "calc(12px + env(safe-area-inset-top,0px))", left: 14, right: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ font: "600 12px var(--mono)", letterSpacing: 1, color: "#fff", background: "rgba(0,0,0,0.4)", padding: "6px 11px", borderRadius: 999, backdropFilter: "blur(4px)" }}>
+          {hoodName || "Camera"}
+        </div>
+        <button onClick={onClose} aria-label="Close camera" style={{ width: 40, height: 40, borderRadius: 999, border: "none", cursor: "pointer",
+          background: "rgba(0,0,0,0.44)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+          <XIcon size={18} />
+        </button>
+      </div>
+      {err ? (
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", gap: 14, padding: "0 30px", textAlign: "center", color: "#fff" }}>
+          <CameraIcon size={40} style={{ color: "rgba(255,255,255,0.7)" }} />
+          <div style={{ font: "15px/1.5 var(--hand)", color: "rgba(255,255,255,0.9)", maxWidth: 280 }}>{err}</div>
+          <button onClick={onClose} style={{ cursor: "pointer", border: "none", background: "#fff", color: "#1a141d",
+            padding: "11px 20px", borderRadius: 999, font: "700 14px var(--hand)" }}>Got it</button>
+        </div>
+      ) : (
+        <div style={{ position: "absolute", bottom: "calc(26px + env(safe-area-inset-bottom,0px))", left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+          <button onClick={snap} aria-label="Capture" style={{ width: 72, height: 72, borderRadius: 999, cursor: "pointer",
+            background: "rgba(255,255,255,0.25)", border: "4px solid #fff", backdropFilter: "blur(2px)",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ width: 54, height: 54, borderRadius: 999, background: "#fff" }} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SidebarEmpty() {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", padding: "40px 28px", textAlign: "center", gap: 16 }}>
+      <KarlMascot size={72} mood="sleepy" style={{ color: "var(--accent)", opacity: 0.7 }} />
+      <div style={{ font: "700 20px var(--hand)", color: "var(--ink)" }}>Where's Karl today?</div>
+      <div style={{ font: "14px/1.6 var(--hand)", color: "var(--ink)", opacity: 0.55, maxWidth: 220 }}>
+        Click any neighborhood on the map to see live cams and current fog conditions.
+      </div>
+    </div>
+  );
+}
+
+function App({ isDesktop = false }) {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const pal = (t.palette && t.palette.length === 5) ? t.palette : PALETTES.classic;
+  const [paper, card, ink, accent, spot] = pal;
+
+  const hoods = window.KARL_HOODS;
+  const statusMeta = window.KARL_STATUS;
+  const [sel, setSel] = useState(null);
+  const [hoverId, setHoverId] = useState(null);
+  const [fullCam, setFullCam] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [account, setAccount] = useState(loadAccount);
+  const [contributions, setContributions] = useState(loadContributions);
+  const [photos, setPhotos] = useState(loadPhotos);
+  const [liked, setLiked] = useState(loadLiked);
+  const [captureHood, setCaptureHood] = useState(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const persistContribs = (next) => { try { localStorage.setItem("kc-contributions", JSON.stringify(next)); } catch (e) {} return next; };
+  const persistPhotos = (next) => { try { localStorage.setItem("kc-photos", JSON.stringify(next)); } catch (e) {} return next; };
+
+  // one-time migration: seed the contributions log from any pre-existing photos
+  useEffect(() => {
+    if (localStorage.getItem("kc-contributions") !== null) return;
+    const existing = loadPhotos();
+    const ids = Object.keys(existing);
+    if (!ids.length) return;
+    const author = (loadAccount() && loadAccount().username) || "You";
+    const seeded = [], nextPhotos = { ...existing };
+    ids.forEach((hid, i) => {
+      const h = (window.KARL_HOODS || []).find(x => x.id === hid);
+      const cid = `c_${Date.parse(existing[hid].ts) || Date.now()}_${i}`;
+      seeded.push({ id: cid, hoodId: hid, hoodName: h ? h.name : hid, url: existing[hid].url,
+        ts: existing[hid].ts, helpful: seedHelpful(cid), author });
+      nextPhotos[hid] = { ...existing[hid], cid };
+    });
+    setContributions(persistContribs(seeded));
+    setPhotos(persistPhotos(nextPhotos));
+  }, []);
+
+  const saveAccount = useCallback((acct) => {
+    setAccount(prev => {
+      const next = { ...(prev || {}), ...acct };
+      try { localStorage.setItem("kc-account", JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  }, []);
+  const logout = useCallback(() => {
+    setAccount(null);
+    try { localStorage.removeItem("kc-account"); } catch (e) {}
+  }, []);
+
+  const capturePhoto = useCallback((hood, file) => {
+    const acct = loadAccount();
+    const cid = `c_${Date.now()}`;
+    const loggedIn = !!(acct && acct.username);
+    const author = loggedIn ? acct.username : personaFor(hood.name, cid);
+    stampPhoto(file, hood.name, loggedIn ? author : null, (url, ts) => {
+      setContributions(prev => persistContribs([...prev, { id: cid, hoodId: hood.id, hoodName: hood.name, url, ts, helpful: 0, author, anon: !loggedIn }]));
+      setPhotos(prev => persistPhotos({ ...prev, [hood.id]: { url, ts, cid } }));
+    });
+  }, []);
+
+  const toggleLike = useCallback((cid) => {
+    setLiked(prevSet => {
+      const has = prevSet.has(cid);
+      const nextSet = new Set(prevSet);
+      has ? nextSet.delete(cid) : nextSet.add(cid);
+      try { localStorage.setItem("kc-liked", JSON.stringify([...nextSet])); } catch (e) {}
+      setContributions(prev => persistContribs(prev.map(c => c.id === cid ? { ...c, helpful: Math.max(0, (c.helpful || 0) + (has ? -1 : 1)) } : c)));
+      return nextSet;
+    });
+  }, []);
+
+  const deleteContribution = useCallback((cid) => {
+    setContributions(prev => {
+      const removed = prev.find(c => c.id === cid);
+      const next = prev.filter(c => c.id !== cid);
+      if (removed) {
+        setPhotos(pp => {
+          if (!pp[removed.hoodId] || pp[removed.hoodId].cid !== cid) return pp;
+          // promote the most recent remaining contribution for that hood, if any
+          const rest = next.filter(c => c.hoodId === removed.hoodId);
+          const np = { ...pp };
+          if (rest.length) { const last = rest[rest.length - 1]; np[removed.hoodId] = { url: last.url, ts: last.ts, cid: last.id }; }
+          else delete np[removed.hoodId];
+          return persistPhotos(np);
+        });
+      }
+      return persistContribs(next);
+    });
+  }, []);
+
+  const myCount = account ? contributions.filter(c => c.author === account.username).length : 0;
+  const acctView = account ? { ...account, level: myCount, contributions: myCount } : null;
+
+  // capture flow: chooser → upload (file input) or webcam
+  const requestPhoto = useCallback((hood) => setCaptureHood(hood), []);
+  const onFilePicked = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f && captureHood) capturePhoto(captureHood, f);
+    e.target.value = "";
+    setCaptureHood(null);
+  };
+  const contribForHood = (hid) => {
+    const p = photos[hid];
+    return p && p.cid ? contributions.find(c => c.id === p.cid) : null;
+  };
+
+
+  const selHood = hoods.find(h => h.id === sel) || null;
+  const verdict = cityVerdict(hoods);
+
+  // ── pan / zoom ──
+  const stageRef = useRef(null);
+  const [stage, setStage] = useState({ w: 360, h: 470 });
+  const [view, setView] = useState({ scale: 0.6, tx: 0, ty: 0 });
+  const dragRef = useRef(null);
+  const movedRef = useRef(false);
+  const pointersRef = useRef(new Map());
+  const pinchRef = useRef(null);
+
+  const fitScale = stage.w / MAP_W;
+  const minScale = fitScale, maxScale = fitScale * 8;
+
+  const clampView = useCallback((v, s) => {
+    const w = MAP_W * v.scale, h = MAP_H * v.scale;
+    let tx, ty;
+    if (w <= s.w) tx = (s.w - w) / 2; else tx = clamp(v.tx, s.w - w, 0);
+    if (h <= s.h) ty = (s.h - h) / 2; else ty = clamp(v.ty, s.h - h, 0);
+    return { scale: v.scale, tx, ty };
+  }, []);
+
+  useEffect(() => {
+    const el = stageRef.current; if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      // use layout px (offsetWidth/Height) so the view math is independent of any
+      // CSS scaling applied to an ancestor (e.g. a scaled phone frame)
+      const s = { w: el.offsetWidth || r.width, h: el.offsetHeight || r.height };
+      setStage(s);
+      // frame the city: fill the stage height, center horizontally on mid-city
+      const scale = clamp(s.h / MAP_H, s.w / MAP_W, (s.w / MAP_W) * 8);
+      const cx = 0.49 * MAP_W * scale, cy = 0.50 * MAP_H * scale;
+      setView(clampView({ scale, tx: s.w / 2 - cx, ty: s.h / 2 - cy }, s));
+    };
+    measure();
+    const ro = new ResizeObserver(measure); ro.observe(el);
+    return () => ro.disconnect();
+  }, [clampView]);
+
+  // client coords → stage-local layout px (robust to any ancestor CSS scaling)
+  const clientToStage = (cx, cy) => {
+    const el = stageRef.current;
+    const r = el.getBoundingClientRect();
+    const fx = (el.offsetWidth || r.width) / r.width, fy = (el.offsetHeight || r.height) / r.height;
+    return [(cx - r.left) * fx, (cy - r.top) * fy];
+  };
+  // client coords → image coords (given a view)
+  const clientToImg = (cx, cy, v) => {
+    const [sxp, syp] = clientToStage(cx, cy);
+    return [(sxp - v.tx) / v.scale, (syp - v.ty) / v.scale];
+  };
+
+  const onDown = (e) => {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch (err) {}
+    if (pointersRef.current.size === 2) {
+      // begin pinch: anchor the midpoint's image point
+      const pts = [...pointersRef.current.values()];
+      const midX = (pts[0].x + pts[1].x) / 2, midY = (pts[0].y + pts[1].y) / 2;
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const anchor = clientToImg(midX, midY, view);
+      pinchRef.current = { startDist: dist, startScale: view.scale, anchor };
+      dragRef.current = null;
+      movedRef.current = true;
+    } else {
+      dragRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
+      movedRef.current = false;
+    }
+  };
+  // map screen point → image coordinates (single pointer)
+  const toMap = (e) => clientToImg(e.clientX, e.clientY, view);
+
+  const onMove = (e) => {
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // pinch zoom (two fingers)
+    if (pinchRef.current && pointersRef.current.size >= 2) {
+      const pts = [...pointersRef.current.values()];
+      const midX = (pts[0].x + pts[1].x) / 2, midY = (pts[0].y + pts[1].y) / 2;
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const p = pinchRef.current;
+      const ns = clamp(p.startScale * (dist / p.startDist), minScale, maxScale);
+      const [msx, msy] = clientToStage(midX, midY);
+      movedRef.current = true;
+      setView(v => clampView({ scale: ns, tx: msx - p.anchor[0] * ns, ty: msy - p.anchor[1] * ns }, stage));
+      return;
+    }
+
+    const d = dragRef.current;
+    if (d) {
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (Math.abs(dx) + Math.abs(dy) > 6) movedRef.current = true;
+      setView(v => clampView({ scale: v.scale, tx: d.tx + dx, ty: d.ty + dy }, stage));
+      return;
+    }
+    if (!stageRef.current) return;          // hover highlight (mouse)
+    const [mx, my] = toMap(e);
+    const id = hoodAt(mx, my);
+    if (id !== hoverId) setHoverId(id);
+  };
+  // tap (not drag/pinch) on a neighborhood selects it; tap on water deselects
+  const onUp = (e) => {
+    const wasPinch = !!pinchRef.current;
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    // if one finger remains after a pinch, hand off to a fresh drag (no jump)
+    if (pointersRef.current.size === 1) {
+      const [only] = [...pointersRef.current.values()];
+      dragRef.current = { x: only.x, y: only.y, tx: view.tx, ty: view.ty };
+      return;
+    }
+    const moved = movedRef.current;
+    dragRef.current = null;
+    if (moved || wasPinch || !stageRef.current) return;
+    const [mx, my] = toMap(e);
+    setSel(hoodAt(mx, my));
+  };
+
+  // desktop: wheel / trackpad zoom centered on cursor
+  const onWheel = (e) => {
+    if (!stageRef.current) return;
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    setView(v => {
+      const ns = clamp(v.scale * factor, minScale, maxScale);
+      const [msx, msy] = clientToStage(e.clientX, e.clientY);
+      const ix = (msx - v.tx) / v.scale, iy = (msy - v.ty) / v.scale;
+      return clampView({ scale: ns, tx: msx - ix * ns, ty: msy - iy * ns }, stage);
+    });
+  };
+
+  const zoom = (factor) => {
+    setView(v => {
+      const ns = clamp(v.scale * factor, minScale, maxScale);
+      const cx = stage.w / 2, cy = stage.h / 2;
+      const mx = (cx - v.tx) / v.scale, my = (cy - v.ty) / v.scale;
+      return clampView({ scale: ns, tx: cx - mx * ns, ty: cy - my * ns }, stage);
+    });
+  };
+
+  const sx = (h) => view.tx + (h.x / 100) * MAP_W * view.scale;
+  const sy = (h) => view.ty + (h.y / 100) * MAP_H * view.scale;
+  const onScreen = (x, y, m = 60) => x > -m && x < stage.w + m && y > -m && y < stage.h + m;
+
+  const select = (id) => { if (!movedRef.current) setSel(id); };
+
+  const rootStyle = {
+    "--paper": paper, "--card": card, "--ink": ink, "--accent": accent, "--spot": spot,
+    "--land": "#a9ccd6", "--land-line": "#eef2f0", "--coast": "#7ba6b1", "--fog": "#f4f2ee",
+    "--hand": "'Patrick Hand', 'Comic Sans MS', cursive",
+    "--display": "'Shantell Sans', 'Patrick Hand', cursive",
+    "--mono": "'DM Mono', ui-monospace, monospace",
+  };
+
+  // ── desktop two-column layout ──────────────────────────────────────────
+  if (isDesktop) return (
+    <div style={{ ...rootStyle, height: "100%", display: "flex", flexDirection: "column",
+      background: "var(--paper)", color: "var(--ink)" }}>
+      <KarlDefs on={t.wobble} />
+
+      {/* nav bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "0 24px",
+        height: 58, flexShrink: 0, background: "var(--card)",
+        borderBottom: "1px solid color-mix(in srgb, var(--ink) 9%, transparent)", zIndex: 10 }}>
+        <img src="project/assets/karlcheck-logo.png" alt="KarlCheck"
+          style={{ height: 48, width: "auto", objectFit: "contain", objectPosition: "left center", mixBlendMode: "multiply" }} />
+        <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 5,
+          font: "600 10px var(--mono)", letterSpacing: 1,
+          color: "var(--accent)", background: "color-mix(in srgb, var(--accent) 11%, transparent)", padding: "5px 9px", borderRadius: 999 }}>
+          <span className="kc-livedot" />LIVE
+        </div>
+        <button onPointerDown={e => e.stopPropagation()} onClick={async () => {
+          const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app';
+          const shareData = { title: "KarlCheck", text: "KarlCheck — fog, verified by your neighbors.", url };
+          if (navigator.share) { try { await navigator.share(shareData); return; } catch (err) { if (err?.name === "AbortError") return; } }
+          setShareOpen(true);
+        }} style={{ display: "flex", alignItems: "center", gap: 6,
+          font: "600 11px var(--hand)", color: "var(--ink)", cursor: "pointer",
+          background: "transparent", border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
+          padding: "6px 12px", borderRadius: 999 }}>
+          <ShareIcon size={14} /><span>Share</span>
+        </button>
+        <button onClick={() => setSettingsOpen(true)} aria-label="Settings" style={{
+          width: 36, height: 36, borderRadius: 999, cursor: "pointer",
+          background: "transparent", color: "var(--ink)",
+          border: "1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)",
+          display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CogIcon size={18} />
+        </button>
+      </div>
+
+      {/* map + sidebar */}
+      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+
+        {/* map column */}
+        <div style={{ flex: 1, minWidth: 0, position: "relative", padding: 16 }}>
+          <div ref={stageRef}
+            onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+            onWheel={onWheel} onPointerLeave={() => setHoverId(null)}
+            style={{ position: "absolute", inset: 16, borderRadius: 18, overflow: "hidden",
+              background: "#f4f1e9", boxShadow: "inset 0 0 0 1.5px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.07)",
+              cursor: dragRef.current ? "grabbing" : (hoverId ? "pointer" : "grab"), touchAction: "pan-y" }}>
+            <div style={{ position: "absolute", left: 0, top: 0, width: MAP_W, height: MAP_H,
+              transform: `translate(${view.tx}px,${view.ty}px) scale(${view.scale})`, transformOrigin: "0 0", pointerEvents: "none" }}>
+              <SFMap selId={sel} hoverId={hoverId} />
+            </div>
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              {hoods.filter(h => h.liveUrl).map(h => {
+                const nudge = { soma: 20, fidi: 20, richmond: 20, sunset: -40 }[h.id] || 0;
+                const bx = view.tx + (h.x / 100) * MAP_W * view.scale;
+                const by = view.ty + ((h.y / 100) * MAP_H - 84 + nudge) * view.scale;
+                return onScreen(bx, by) && (
+                  <MapStatusBadge key={h.id} hood={h} photo={photos[h.id]} x={bx} y={by} />
+                );
+              })}
+              {selHood && onScreen(sx(selHood), sy(selHood)) && (
+                <div style={{ position: "absolute", left: sx(selHood), top: sy(selHood) - 42,
+                  transform: "translate(-50%,0)", background: "var(--ink)", color: "var(--paper)",
+                  font: "700 13px var(--hand)", padding: "3px 11px", borderRadius: 999, whiteSpace: "nowrap",
+                  pointerEvents: "none", zIndex: 35, boxShadow: "0 3px 9px rgba(0,0,0,0.2)" }}>{selHood.name}</div>
+              )}
+            </div>
+            <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", flexDirection: "column", gap: 7, zIndex: 40 }}>
+              {[["+", () => zoom(1.5)], ["–", () => zoom(1/1.5)]].map(([s, fn], i) => (
+                <button key={i} onClick={fn} onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} style={{
+                  width: 40, height: 40, borderRadius: 12, border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
+                  background: "var(--card)", color: "var(--ink)", font: "600 22px var(--hand)", cursor: "pointer",
+                  boxShadow: "0 2px 7px rgba(0,0,0,0.12)", lineHeight: 1, paddingBottom: i ? 4 : 0 }}>{s}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* sidebar */}
+        <div style={{ width: 360, flexShrink: 0, display: "flex", flexDirection: "column",
+          borderLeft: "1px solid color-mix(in srgb, var(--ink) 9%, transparent)",
+          background: "var(--card)", overflowY: "auto" }}>
+          {selHood ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end",
+                padding: "10px 14px", flexShrink: 0,
+                borderBottom: "1px solid color-mix(in srgb, var(--ink) 8%, transparent)" }}>
+                <button onClick={() => setSel(null)} style={{
+                  width: 28, height: 28, borderRadius: 999, border: "none", cursor: "pointer",
+                  background: "color-mix(in srgb, var(--ink) 8%, transparent)", color: "var(--ink)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>✕</button>
+              </div>
+              <div style={{ padding: "16px 18px 32px" }}>
+                <SheetBody hood={selHood} onExpand={setFullCam}
+                  photo={photos[selHood.id]} onRequestPhoto={requestPhoto}
+                  contrib={contribForHood(selHood.id)}
+                  liked={photos[selHood.id] && liked.has(photos[selHood.id].cid)}
+                  onLike={toggleLike} />
+              </div>
+            </>
+          ) : <SidebarEmpty />}
+        </div>
+      </div>
+
+      {/* overlays */}
+      <FullscreenCam hood={fullCam} onMinimize={() => setFullCam(null)} onClose={() => { setFullCam(null); setSel(null); }}
+        photo={fullCam && photos[fullCam.id]} onRequestPhoto={requestPhoto}
+        contrib={fullCam && contribForHood(fullCam.id)} liked={fullCam && photos[fullCam.id] && liked.has(photos[fullCam.id].cid)}
+        onLike={toggleLike} />
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
+      <CaptureChooser open={!!captureHood && !cameraOpen} hoodName={captureHood && captureHood.name}
+        onClose={() => setCaptureHood(null)} onTakePhoto={() => setCameraOpen(true)}
+        onUpload={() => fileInputRef.current && fileInputRef.current.click()} />
+      <CameraModal open={cameraOpen} hoodName={captureHood && captureHood.name}
+        onClose={() => setCameraOpen(false)}
+        onCapture={(file) => { if (captureHood) capturePhoto(captureHood, file); setCameraOpen(false); setCaptureHood(null); }} />
+      <TweaksPanel>
+        <TweakSection label="Look" />
+        <TweakColor label="Palette" value={t.palette}
+          options={[PALETTES.classic, PALETTES.foggy, PALETTES.sunset]}
+          onChange={v => setTweak("palette", v)} />
+        <TweakToggle label="Hand-drawn wobble" value={t.wobble} onChange={v => setTweak("wobble", v)} />
+      </TweaksPanel>
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)}
+        account={acctView} onSave={saveAccount} onLogout={logout}
+        contributions={contributions} onDelete={deleteContribution} narrow />
+      <SharePopover open={shareOpen} onClose={() => setShareOpen(false)} />
+    </div>
+  );
+
+  // ── mobile layout ───────────────────────────────────────────────────────
+  return (
+    <div style={{ ...rootStyle, height: "100%", display: "flex", flexDirection: "column",
+      background: "var(--paper)", color: "var(--ink)", position: "relative",
+      }}>
+      <KarlDefs on={t.wobble} />
+
+      {/* ── header ── */}
+      <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 14px) 16px 2px", flexShrink: 0, position: "relative" }}>
+        <img src="project/assets/karlcheck-logo.png" alt="KarlCheck — fog verified by your neighbors"
+          style={{ display: "block", width: "100%", height: "auto", maxHeight: 76, objectFit: "contain",
+            objectPosition: "left center", mixBlendMode: "multiply" }} />
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 14px)", right: 14, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5,
+            font: "600 10px var(--mono)", letterSpacing: 1,
+            color: "var(--accent)", background: "color-mix(in srgb, var(--accent) 11%, transparent)", padding: "5px 9px", borderRadius: 999 }}>
+            <span className="kc-livedot" />LIVE
+          </div>
+          <button onClick={() => setSettingsOpen(true)} aria-label="Settings" style={{
+            width: 38, height: 38, borderRadius: 999, cursor: "pointer", flexShrink: 0,
+            background: "var(--card)", color: "var(--ink)",
+            border: "1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)",
+            display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 7px rgba(0,0,0,0.1)" }}>
+            <CogIcon size={20} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── map card ── */}
+      <div style={{ flex: 1, margin: "0 14px 14px", position: "relative", minHeight: 0 }}>
+        <div ref={stageRef}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+          onWheel={onWheel}
+          onPointerLeave={() => setHoverId(null)}
+          style={{ position: "absolute", inset: 0, borderRadius: 22, overflow: "hidden",
+            background: "#f4f1e9", boxShadow: "inset 0 0 0 1.5px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.07)",
+            cursor: dragRef.current ? "grabbing" : (hoverId ? "pointer" : "grab"), touchAction: "pan-y" }}>
+          {/* transformed map (original vector illustration) */}
+          <div style={{ position: "absolute", left: 0, top: 0, width: MAP_W, height: MAP_H,
+            transform: `translate(${view.tx}px,${view.ty}px) scale(${view.scale})`, transformOrigin: "0 0", pointerEvents: "none" }}>
+            <SFMap selId={sel} hoverId={hoverId} />
+          </div>
+
+          {/* overlay: selected name pill + status badges */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {/* status badges — neighborhoods with a live cam (per-hood vertical nudges in image space) */}
+            {hoods.filter(h => h.liveUrl).map(h => {
+              const dy = { soma: 20, fidi: 20, richmond: 20, sunset: -40 }[h.id] || 0;
+              return onScreen(sx(h), sy(h)) && (
+                <MapStatusBadge key={h.id} hood={h} photo={photos[h.id]} x={sx(h)} y={sy(h) - 32 + dy} />
+              );
+            })}
+            {selHood && onScreen(sx(selHood), sy(selHood)) && (
+              <div style={{ position: "absolute", left: sx(selHood), top: sy(selHood) - 42,
+                transform: "translate(-50%,0)", background: "var(--ink)", color: "var(--paper)",
+                font: "700 13px var(--hand)", padding: "3px 11px", borderRadius: 999, whiteSpace: "nowrap",
+                pointerEvents: "none", zIndex: 35, boxShadow: "0 3px 9px rgba(0,0,0,0.2)" }}>{selHood.name}</div>
+            )}
+          </div>
+
+          {/* zoom controls */}
+          <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", flexDirection: "column", gap: 7, zIndex: 40 }}>
+            {[["+", () => zoom(1.5)], ["–", () => zoom(1/1.5)]].map(([s, fn], i) => (
+              <button key={i} onClick={fn} onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} style={{
+                width: 40, height: 40, borderRadius: 12, border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
+                background: "var(--card)", color: "var(--ink)", font: "600 22px var(--hand)", cursor: "pointer",
+                boxShadow: "0 2px 7px rgba(0,0,0,0.12)", lineHeight: 1, paddingBottom: i ? 4 : 0 }}>{s}</button>
+            ))}
+          </div>
+
+          {/* share app */}
+          <button onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={async (e) => {
+            e.stopPropagation();
+            const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app';
+            const shareData = { title: "KarlCheck", text: "KarlCheck — fog, verified by your neighbors.", url };
+            const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+            if (navigator.share && !framed) {
+              try { await navigator.share(shareData); return; }
+              catch (err) { if (err && err.name === "AbortError") return; }
+            }
+            setShareOpen(true);
+          }} style={{
+            position: "absolute", left: 12, bottom: 12, display: "flex", alignItems: "center", gap: 6,
+            font: "600 11px var(--hand)", color: "var(--ink)", cursor: "pointer",
+            background: "var(--card)", border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
+            padding: "7px 12px", borderRadius: 999, boxShadow: "0 2px 7px rgba(0,0,0,0.12)" }}>
+            <ShareIcon size={14} /><span data-lbl>Share</span>
+          </button>
+
+          <SharePopover open={shareOpen} onClose={() => setShareOpen(false)} />
+
+          {/* hint */}
+          <div style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)",
+            font: "11px var(--hand)", color: "var(--ink)",
+            opacity: 0.5, background: "color-mix(in srgb, var(--card) 70%, transparent)", padding: "3px 9px", borderRadius: 999,
+            whiteSpace: "nowrap", pointerEvents: "none" }}>tap a neighborhood</div>
+        </div>
+      </div>
+
+      <BottomSheet hood={selHood} onClose={() => setSel(null)} onExpand={setFullCam}
+        photo={selHood && photos[selHood.id]} onRequestPhoto={requestPhoto}
+        contrib={selHood && contribForHood(selHood.id)} liked={selHood && photos[selHood.id] && liked.has(photos[selHood.id].cid)}
+        onLike={toggleLike} />
+
+      <FullscreenCam hood={fullCam} onMinimize={() => setFullCam(null)} onClose={() => { setFullCam(null); setSel(null); }}
+        photo={fullCam && photos[fullCam.id]} onRequestPhoto={requestPhoto}
+        contrib={fullCam && contribForHood(fullCam.id)} liked={fullCam && photos[fullCam.id] && liked.has(photos[fullCam.id].cid)}
+        onLike={toggleLike} />
+
+      {/* hidden upload input + capture chooser + webcam */}
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
+      <CaptureChooser open={!!captureHood && !cameraOpen} hoodName={captureHood && captureHood.name}
+        onClose={() => setCaptureHood(null)}
+        onTakePhoto={() => setCameraOpen(true)}
+        onUpload={() => fileInputRef.current && fileInputRef.current.click()} />
+      <CameraModal open={cameraOpen} hoodName={captureHood && captureHood.name}
+        onClose={() => setCameraOpen(false)}
+        onCapture={(file) => { if (captureHood) capturePhoto(captureHood, file); setCameraOpen(false); setCaptureHood(null); }} />
+
+      {/* ── Tweaks ── */}
+      <TweaksPanel>
+        <TweakSection label="Look" />
+        <TweakColor label="Palette" value={t.palette}
+          options={[PALETTES.classic, PALETTES.foggy, PALETTES.sunset]}
+          onChange={v => setTweak("palette", v)} />
+        <TweakToggle label="Hand-drawn wobble" value={t.wobble} onChange={v => setTweak("wobble", v)} />
+      </TweaksPanel>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)}
+        account={acctView} onSave={saveAccount} onLogout={logout}
+        contributions={contributions} onDelete={deleteContribution} />
+    </div>
+  );
+}
+
+// ── device shell: centers + scales the iPhone to fit the viewport ──
+function Shell() {
+  const wrapRef = useRef(null);
+  const [scale, setScale] = useState(1);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const DW = 390, DH = 844;
+  useEffect(() => {
+    const fit = () => {
+      setIsDesktop(window.innerWidth >= 768);
+      const pad = 24;
+      const s = Math.min(1, (window.innerWidth - pad) / DW, (window.innerHeight - pad) / DH);
+      setScale(s);
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
+  if (isDesktop) return (
+    <div style={{ position: "fixed", inset: 0 }}>
+      <App isDesktop={true} />
+    </div>
+  );
+  return (
+    <div ref={wrapRef} style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center",
+      justifyContent: "center", background: "#d9d6d0",
+      backgroundImage: "radial-gradient(circle at 50% 30%, #e4e1db, #cdc9c2)", overflow: "hidden" }}>
+      <div style={{ width: DW, height: DH, transform: `scale(${scale})`, transformOrigin: "center center" }}>
+        <IOSDevice width={DW} height={DH}>
+          <App />
+        </IOSDevice>
+      </div>
+    </div>
+  );
+}
+
+const isNative = !!(window.__KC_NATIVE__ || window.ReactNativeWebView);
+ReactDOM.createRoot(document.getElementById("root")).render(isNative ? <App /> : <Shell />);
+
+  </script>
+
+</body>
+</html>

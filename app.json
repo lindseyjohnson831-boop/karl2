@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "KarlCheckApp",
+    "name": "KarlCheck",
     "slug": "KarlCheckApp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,6 +19,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "assetBundlePatterns": [
+      "assets/**"
+    ],
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }
