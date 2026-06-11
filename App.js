@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Text, Linking, Share } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
@@ -26,6 +26,26 @@ const ASSET_MAP = [
 ];
 
 const HTML_URI = FileSystem.documentDirectory + 'karlcheck/index.html';
+
+const EXTERNAL_URL = /^(https?|mailto|sms|tel):/i;
+
+// Messages posted by the page (see the "Native bridge" script in karlcheck.html):
+// - open-url: open external links in Safari / Mail / Messages instead of the WebView
+// - share: present the native share sheet
+function handleWebViewMessage(event) {
+  let msg;
+  try {
+    msg = JSON.parse(event.nativeEvent.data);
+  } catch (e) {
+    return;
+  }
+  if (msg.type === 'open-url' && typeof msg.url === 'string' && EXTERNAL_URL.test(msg.url)) {
+    Linking.openURL(msg.url).catch(() => {});
+  } else if (msg.type === 'share') {
+    const message = [msg.text, msg.url].filter(Boolean).join(' ');
+    Share.share({ message, url: msg.url, title: msg.title }).catch(() => {});
+  }
+}
 
 async function ensureAssets() {
   await FileSystem.makeDirectoryAsync(
@@ -79,7 +99,7 @@ export default function App() {
   }
 
   const assetBase = FileSystem.documentDirectory + 'karlcheck/';
-  const injectedJS = `window.__KC_NATIVE__=true;window.__KC_SHARE_URL__="https://karlcheck.app";window.__KC_BASE__=${JSON.stringify(assetBase)};true;`;
+  const injectedJS = `window.__KC_NATIVE__=true;window.__KC_SHARE_URL__="https://karlcheck.app/get";window.__KC_BASE__=${JSON.stringify(assetBase)};true;`;
 
   return (
     <View style={styles.container}>
@@ -96,7 +116,17 @@ export default function App() {
         mixedContentMode="always"
         scrollEnabled={false}
         bounces={true}
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
         injectedJavaScriptBeforeContentLoaded={injectedJS}
+        onMessage={handleWebViewMessage}
+        // window.open / target=_blank popups (e.g. from cam embeds) bypass
+        // onShouldStartLoadWithRequest — route them to Safari so the WebView
+        // never leaves the app.
+        onOpenWindow={({ nativeEvent }) => {
+          const url = nativeEvent.targetUrl;
+          if (url && /^https?:/i.test(url)) Linking.openURL(url).catch(() => {});
+        }}
         onShouldStartLoadWithRequest={(req) => {
           if (!req.isTopFrame) return true;
           return req.url.startsWith('file://') || req.url === 'about:blank';

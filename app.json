@@ -7,9 +7,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.ctluck.karlcheck",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "KarlCheck uses the camera so you can share a photo of current fog conditions in your neighborhood.",
+        "NSPhotoLibraryUsageDescription": "KarlCheck lets you upload a photo from your library to share current fog conditions.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.ctluck.karlcheck",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +32,17 @@
     ],
     "plugins": [
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "832fdb30-093e-4a01-a129-3167f8e72757"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/832fdb30-093e-4a01-a129-3167f8e72757"
+    }
   }
 }

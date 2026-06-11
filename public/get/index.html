@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Get KarlCheck — fog, verified by your neighbors</title>
+<meta name="description" content="KarlCheck — live San Francisco fog conditions, neighborhood by neighborhood. Get the iOS app or open the web app." />
+<meta property="og:title" content="KarlCheck" />
+<meta property="og:description" content="Fog, verified by your neighbors. Live cams + Karl scores for every SF neighborhood." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;500;600;700&family=Patrick+Hand&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #eae8e4; --card: #f6f3ee; --ink: #34293a; --accent: #863a5c; --spot: #c25c6e;
+    --hand: 'Patrick Hand', 'Comic Sans MS', cursive;
+    --display: 'Shantell Sans', 'Patrick Hand', cursive;
+    --mono: 'DM Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink); font-family: var(--hand);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    width: 100%; max-width: 420px; background: var(--card); border-radius: 26px;
+    padding: 36px 30px 30px; text-align: center;
+    border: 1.5px solid color-mix(in srgb, var(--ink) 10%, transparent);
+    box-shadow: 0 10px 32px rgba(52, 41, 58, 0.13);
+  }
+  .logo { height: 84px; width: auto; mix-blend-mode: multiply; }
+  h1 { font-family: var(--display); font-size: 27px; font-weight: 700; margin: 14px 0 8px; }
+  .sub { font-size: 17px; line-height: 1.45; color: color-mix(in srgb, var(--ink) 72%, transparent); margin-bottom: 26px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; padding: 15px 18px; border-radius: 999px; text-decoration: none;
+    font: 700 18px var(--hand); margin-bottom: 12px;
+  }
+  .btn.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .btn.primary:active { transform: scale(0.98); }
+  .btn.soon {
+    background: transparent; color: color-mix(in srgb, var(--ink) 55%, transparent);
+    border: 1.5px dashed color-mix(in srgb, var(--ink) 25%, transparent); cursor: default;
+  }
+  .soon-tag {
+    font: 600 9.5px var(--mono); letter-spacing: 1.2; color: var(--spot);
+    background: color-mix(in srgb, var(--spot) 12%, transparent);
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .foot { margin-top: 18px; font: 500 11px var(--mono); letter-spacing: 0.8; color: color-mix(in srgb, var(--ink) 45%, transparent); }
+</style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="/project/assets/karlcheck-logo.png" alt="KarlCheck" onerror="this.style.display='none'" />
+    <h1>Karl is out there.</h1>
+    <p class="sub">Live fog conditions for every San Francisco neighborhood — cams, Karl scores, and your neighbors' photos.</p>
+
+    <a class="btn primary" href="/">Open the web app&nbsp;→</a>
+
+    <!-- When the iOS app ships, set data-href to the App Store URL — the script
+         below turns this into a real download button. -->
+    <a class="btn soon" id="appstore" data-href="">
+      <span>iOS app</span><span class="soon-tag">COMING SOON</span>
+    </a>
+
+    <div class="foot">MADE IN THE FOG · SAN FRANCISCO</div>
+  </main>
+  <script>
+    var as = document.getElementById('appstore');
+    var url = as.getAttribute('data-href');
+    if (url) {
+      as.href = url;
+      as.className = 'btn primary';
+      as.innerHTML = 'Download on the App&nbsp;Store&nbsp;→';
+    }
+  </script>
+</body>
+</html>

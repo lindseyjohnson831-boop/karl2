@@ -53,6 +53,30 @@
     };
   </script>
 
+  <script>
+    /* Native bridge — only active inside the iOS/Android app (react-native-webview).
+       External links must NOT navigate the WebView itself: that strands the user on
+       an external site with no way back into the app. Instead we intercept clicks on
+       http(s)/mailto/sms/tel links and hand the URL to the native side, which opens
+       it in Safari / Mail / Messages. (See onMessage in App.js.) */
+    (function () {
+      if (!window.ReactNativeWebView) return;
+      document.addEventListener('click', function (e) {
+        var el = e.target;
+        while (el && el !== document.documentElement) {
+          if (el.tagName === 'A' && el.href) break;
+          el = el.parentElement;
+        }
+        if (!el || el.tagName !== 'A') return;
+        var href = el.href || '';
+        if (/^(https?|mailto|sms|tel):/i.test(href)) {
+          e.preventDefault();
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'open-url', url: href }));
+        }
+      }, true);
+    })();
+  </script>
+
   <script type="text/babel">
 
 /* BEGIN USAGE */
@@ -967,7 +991,7 @@ window.KARL_HOODS = [
   { id: "marina",           name: "Marina",            x: 52.3, y: 26.0, status: "partly", temp: 60, wind: 17, vis: 4.5, score: 43, cams: 12, host: "Crissy Field beach cam",  liveUrl: "https://parksconservancy.siteproxy.net/Crissy%20Beach/ctl.html", blurb: "Sun now, wall of me rolling in by 5. Classic." },
   { id: "fishermans",       name: "Fisherman's Wharf", x: 59.7, y: 24.2, status: "partly", temp: 60, wind: 16, vis: 5.0, score: 41, cams: 9,  host: "EarthCam · SF Bayfront", liveUrl: "https://www.earthcam.com/usa/california/sanfrancisco/?cam=rowingclub", embed: false, poster: "project/assets/fishermans-cam.png", blurb: "Briny and brisk. The sea lions don't mind me." },
   { id: "north-beach",      name: "North Beach",       x: 63.4, y: 27.5, status: "sun",    temp: 64, wind: 10, vis: 7.5, score: 20, cams: 8,  host: "Washington Sq. cam",    blurb: "Espresso weather. Sit outside, you've earned it." },
-  { id: "fidi",             name: "FiDi",              x: 64.6, y: 35.4, status: "sun",    temp: 64, wind: 12, vis: 8.0, score: 17, cams: 11, host: "SkylineWebcams · San Francisco", liveUrl: "https://www.skylinewebcams.com/en/webcam/united-states/california/san-francisco/san-francisco.html", embed: false, poster: "https://cdn.skylinewebcams.com/social1833.jpg", blurb: "Clear up high, gusty at the crosswalks." },
+  { id: "fidi",             name: "FiDi",              x: 64.6, y: 35.4, status: "sun",    temp: 64, wind: 12, vis: 8.0, score: 17, cams: 11, host: "ABC7 · SF skyline cam", liveUrl: "https://www.youtube.com/watch?v=G8RIAgPxaMc", embedUrl: "https://www.youtube.com/embed/G8RIAgPxaMc?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1", poster: "https://i.ytimg.com/vi/G8RIAgPxaMc/hqdefault.jpg", blurb: "Clear up high, gusty at the crosswalks." },
   { id: "soma",             name: "SOMA",              x: 64.7, y: 43.9, status: "partly", temp: 63, wind: 9,  vis: 6.5, score: 27, cams: 12, host: "EarthCam · SF Skyline", liveUrl: "https://www.earthcam.com/usa/california/sanfrancisco/?cam=sanfranciscoskyline", embed: false, poster: "https://www.earthcam.com/cams/includes/image.php?logo=0&playbutton=1&s=1&img=Dg6H3OtZ2Ps%2BdcOgJnecuw%3D%3D", blurb: "Sun with a side of wind tunnel between towers." },
   { id: "dogpatch",         name: "Dogpatch",          x: 68.6, y: 56.4, status: "sun",    temp: 65, wind: 8,  vis: 8.5, score: 13, cams: 9,  host: "Pier crane cam",        blurb: "Flat, bright, and breezy off the water." },
   { id: "potrero",          name: "Potrero Hill",      x: 64.1, y: 57.6, status: "sun",    temp: 66, wind: 6,  vis: 9.0, score: 10, cams: 8,  host: "18th St. crest cam",    blurb: "Sun trap. You'll forget I exist down here." },
@@ -979,7 +1003,7 @@ window.KARL_HOODS = [
   { id: "mission",          name: "The Mission",       x: 58.8, y: 59.3, status: "sun",    temp: 67, wind: 5,  vis: 9.5, score: 8,  cams: 16, host: "Dolores Park hill cam", blurb: "The one true sunny. I dare not enter." },
   { id: "bernal",           name: "Bernal Heights",    x: 58.1, y: 73.9, status: "sun",    temp: 65, wind: 7,  vis: 9.0, score: 11, cams: 9,  host: "Bernal summit cam",     blurb: "Top of the hill, top of the forecast. Crisp." },
   { id: "noe-valley",       name: "Noe Valley",        x: 51.4, y: 69.5, status: "sun",    temp: 63, wind: 6,  vis: 7.5, score: 18, cams: 10, host: "24th St. stroller cam", blurb: "Banana belt behavior. I bounce right off these hills." },
-  { id: "castro",           name: "The Castro",        x: 52.7, y: 60.0, status: "sun",    temp: 64, wind: 7,  vis: 7.8, score: 16, cams: 8,  host: "SkylineWebcams · Castro St", liveUrl: "https://www.skylinewebcams.com/en/webcam/united-states/california/san-francisco/castro-street-san-francisco.html", embed: false, poster: "https://cdn.skylinewebcams.com/social1834.jpg", blurb: "Bright and proud. The hills keep me out." },
+  { id: "castro",           name: "The Castro",        x: 52.7, y: 60.0, status: "sun",    temp: 64, wind: 7,  vis: 7.8, score: 16, cams: 8,  host: "Castro Street Cam", liveUrl: "https://www.youtube.com/watch?v=krFICC5vKoo", embedUrl: "https://www.youtube.com/embed/krFICC5vKoo?autoplay=1&mute=1&playsinline=1&rel=0", nativeEmbed: false, poster: "https://i.ytimg.com/vi/krFICC5vKoo/hqdefault.jpg", blurb: "Bright and proud. The hills keep me out." },
   { id: "haight",           name: "Haight-Ashbury",    x: 48.0, y: 51.2, status: "partly", temp: 59, wind: 12, vis: 4.0, score: 44, cams: 7,  host: "Buena Vista cam",       blurb: "Half gray, half groovy. Mood lighting, basically." },
   { id: "twin-peaks",       name: "Twin Peaks",        x: 46.4, y: 64.2, status: "wind",   temp: 52, wind: 28, vis: 1.0, score: 78, cams: 7,  host: "Sutro Tower base cam",  blurb: "Hold your hat. I'm doing 28 and accelerating." },
   { id: "golden-gate-park", name: "Golden Gate Park",  x: 34.7, y: 50.9, status: "karl",   temp: 54, wind: 15, vis: 0.6, score: 83, cams: 6,  host: "Bison paddock cam",     blurb: "The bison can't see the windmill. Neither can you." },
@@ -1282,16 +1306,6 @@ function GalleryIcon({ size = 20, sw = 1.9, style = {} }) {
     </svg>
   );
 }
-function TrophyIcon({ size = 20, sw = 1.9, style = {} }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", ...style }}>
-      <path d="M7 4 H17 V9 a5 5 0 01-10 0 Z" />
-      <path d="M7 5.5 H4.2 a1 1 0 00-1 1 C3.2 9.5 5 11 7 11 M17 5.5 h2.8 a1 1 0 011 1 C21.8 9.5 20 11 18 11" />
-      <path d="M12 14 v3 M9 20 h6 M9.5 20 q.4-3 2.5-3 q2.1 0 2.5 3" />
-    </svg>
-  );
-}
 function VideoIcon({ size = 20, sw = 1.9, style = {} }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1354,47 +1368,23 @@ function HeartIcon({ size = 16, sw = 1.9, filled = false, style = {} }) {
 }
 
 Object.assign(window, { KarlDefs, WeatherIcon, KarlMascot, ExpandIcon, MinimizeIcon, XIcon, CameraIcon, ShareIcon,
-  CogIcon, ChevronIcon, UserIcon, GalleryIcon, TrophyIcon, VideoIcon, MailIcon, MegaphoneIcon, TrashIcon, ThumbIcon, LogoutIcon, HeartIcon });
+  CogIcon, ChevronIcon, UserIcon, GalleryIcon, VideoIcon, MailIcon, MegaphoneIcon, TrashIcon, ThumbIcon, LogoutIcon, HeartIcon });
 
   </script>
 
   <script type="text/babel">
 /* KarlCheck — map layer.
    Base = the illustrated SF map (assets/sf-map.png, 2744x1568).
-   Overlay = one clickable polygon per neighborhood (KARL_REGIONS, traced/tiled to the
-   real coastline). The selected (and hovered) neighborhood gets its border highlighted. */
+   Neighborhood click areas are invisible — hit-testing happens in the app via
+   KARL_REGION_PTS polygons (hoodAt/pointInPoly), not rendered SVG. */
 
 const KC_IMGW = 2744, KC_IMGH = 1568;
 
-function SFMap({ selId, hoverId }) {
-  const hoods = window.KARL_HOODS;
-  const regions = window.KARL_REGIONS;
-  // draw selected last so its border sits on top of neighbours
-  const ordered = [...hoods].sort((a, b) => (a.id === selId ? 1 : 0) - (b.id === selId ? 1 : 0));
-
+function SFMap() {
   return (
     <div style={{ position: "relative", width: KC_IMGW, height: KC_IMGH }}>
       <img src="project/assets/sf-map-new.png" width={KC_IMGW} height={KC_IMGH} alt="Map of San Francisco neighborhoods"
         draggable="false" style={{ display: "block", width: "100%", height: "100%", userSelect: "none" }} />
-
-      <svg viewBox={`0 0 ${KC_IMGW} ${KC_IMGH}`} width="100%" height="100%"
-        style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none" }}>
-        {ordered.map(h => {
-          const d = regions[h.id]; if (!d) return null;
-          const sel = h.id === selId, hov = h.id === hoverId;
-          return (
-            <path key={h.id} d={d}
-              fill={sel ? "color-mix(in srgb, var(--accent) 20%, transparent)"
-                  : hov ? "color-mix(in srgb, var(--accent) 13%, transparent)"
-                  :        "color-mix(in srgb, var(--accent) 7%, transparent)"}
-              stroke={sel ? "var(--accent)"
-                  : hov ? "color-mix(in srgb, var(--accent) 55%, transparent)"
-                  :        "color-mix(in srgb, var(--accent) 22%, transparent)"}
-              strokeWidth={sel ? 3.4 : 2.2} vectorEffect="non-scaling-stroke"
-              strokeLinejoin="round" style={{ transition: "fill .15s" }} />
-          );
-        })}
-      </svg>
     </div>
   );
 }
@@ -1404,19 +1394,8 @@ Object.assign(window, { SFMap });
   </script>
 
   <script type="text/babel">
-/* KarlCheck — settings system: account, contributions, trophies, contact links */
+/* KarlCheck — settings system: account, contributions, contact links */
 
-// ── level / trophy model ───────────────────────────────────────
-const LEVEL_TIERS = [
-  { name: "Misty Novice",    emoji: "🌫️", min: 1,  max: 5,        blurb: "Just rolled in. Keep the pics coming." },
-  { name: "Jacket Wearer",   emoji: "🧥", min: 6,  max: 10,       blurb: "You've learned. You bring layers now." },
-  { name: "Karl's Paparazzi",emoji: "📸", min: 11, max: 20,       blurb: "Karl can't make a move without you." },
-  { name: "The Fog Overlord",emoji: "👑", min: 21, max: Infinity, blurb: "The fog answers to you now." },
-];
-function tierForLevel(level) {
-  if (level < 1) return null;
-  return LEVEL_TIERS.find(t => level >= t.min && level <= t.max) || LEVEL_TIERS[LEVEL_TIERS.length - 1];
-}
 // deterministic small "helpful" seed so counts are stable across reloads
 function seedHelpful(seedStr) {
   let h = 2166136261;
@@ -1490,35 +1469,54 @@ function MenuRow({ icon, label, sub, tint, onClick, href, external, accent }) {
 }
 
 // ── menu (root settings list) ───────────────────────────────────
+// small pill used wherever account features aren't available yet
+function ComingSoonPill({ style = {} }) {
+  return (
+    <span style={{ flexShrink: 0, font: "700 9.5px var(--mono)", letterSpacing: 1, textTransform: "uppercase",
+      color: "var(--accent)", background: "color-mix(in srgb, var(--accent) 14%, transparent)",
+      border: "1px solid color-mix(in srgb, var(--accent) 26%, transparent)", padding: "4px 8px", borderRadius: 999, ...style }}>
+      Coming soon
+    </span>
+  );
+}
+
 function SettingsMenu({ account, go }) {
   const level = account ? account.level || 0 : 0;
+  // identity strip is interactive only for legacy accounts; new sign-up is paused
+  const stripInner = (
+    <>
+      <div style={{ width: 46, height: 46, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+        background: account ? "var(--accent)" : "color-mix(in srgb, var(--ink) 22%, transparent)", color: "#fff", font: "700 19px var(--hand)" }}>
+        {account ? account.username.slice(0, 1).toUpperCase() : <UserIcon size={22} style={{ color: "#fff" }} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ font: "700 16px var(--hand)", color: "var(--ink)" }}>
+          {account ? account.username : "Accounts"}
+        </div>
+        <div style={{ font: "12px var(--hand)", color: "var(--ink)", opacity: 0.6, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {account ? `Level ${level} · post under your name` : "Sign-in & profiles — coming soon"}
+        </div>
+      </div>
+      {account
+        ? <ChevronIcon dir="right" size={17} style={{ color: "var(--ink)", opacity: 0.4 }} />
+        : <ComingSoonPill />}
+    </>
+  );
+  const stripStyle = {
+    display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+    background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--card)), var(--card))",
+    border: "1.5px solid color-mix(in srgb, var(--accent) 22%, transparent)", borderRadius: 16, padding: "14px 14px", marginBottom: 3,
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
       {/* identity strip */}
-      <button onClick={() => go("account")} style={{
-        display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", cursor: "pointer",
-        background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--card)), var(--card))",
-        border: "1.5px solid color-mix(in srgb, var(--accent) 22%, transparent)", borderRadius: 16, padding: "14px 14px", marginBottom: 3 }}>
-        <div style={{ width: 46, height: 46, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-          background: "var(--accent)", color: "#fff", font: "700 19px var(--hand)" }}>
-          {account ? account.username.slice(0, 1).toUpperCase() : <UserIcon size={22} style={{ color: "#fff" }} />}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ font: "700 16px var(--hand)", color: "var(--ink)" }}>
-            {account ? account.username : "Create an account"}
-          </div>
-          <div style={{ font: "12px var(--hand)", color: "var(--ink)", opacity: 0.6, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {account ? `Level ${level} · post under your name` : "Post photos under your name & track contributions"}
-          </div>
-        </div>
-        <ChevronIcon dir="right" size={17} style={{ color: "var(--ink)", opacity: 0.4 }} />
-      </button>
+      {account
+        ? <button onClick={() => go("account")} style={{ ...stripStyle, cursor: "pointer" }}>{stripInner}</button>
+        : <div style={{ ...stripStyle, cursor: "default" }}>{stripInner}</div>}
 
       <SectionLabel>Your fog</SectionLabel>
       <MenuRow icon={<GalleryIcon size={20} />} label="My Contributions" sub="Photos you've shared & their thanks"
         tint="color-mix(in srgb, #3f9c72 16%, transparent)" accent="#2f8f5e" onClick={() => go("contributions")} />
-      <MenuRow icon={<TrophyIcon size={20} />} label="My Trophies" sub="Your fog-spotting rank"
-        tint="color-mix(in srgb, #d6973a 18%, transparent)" accent="#c07e22" onClick={() => go("trophies")} />
 
       <SectionLabel>Get involved</SectionLabel>
       <MenuRow icon={<VideoIcon size={20} />} label="Host a Neighborhood Cam" sub="Stream your window — $ earned"
@@ -1544,12 +1542,7 @@ function SectionLabel({ children }) {
 }
 
 // ── account: create / profile ───────────────────────────────────
-function AccountView({ account, onSave, onLogout }) {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [pw, setPw] = useState("");
-  const [err, setErr] = useState("");
-
+function AccountView({ account, onLogout }) {
   if (account) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "16px 4px" }}>
@@ -1578,46 +1571,17 @@ function AccountView({ account, onSave, onLogout }) {
     );
   }
 
-  const submit = () => {
-    if (!username.trim()) return setErr("Pick a username.");
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Enter a valid email.");
-    if (pw.length < 4) return setErr("Password needs 4+ characters.");
-    onSave({ username: username.trim(), email: email.trim() });
-  };
-
+  // Account sign-up is paused until account management is built out.
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "8px 2px" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-        <KarlMascot size={52} mood="gleeful" style={{ color: "var(--accent)" }} />
-        <div style={{ font: "700 19px var(--hand)", color: "var(--ink)", textAlign: "center" }}>Join the fog watch</div>
-        <div style={{ font: "13px/1.5 var(--hand)", color: "var(--ink)", opacity: 0.6, textAlign: "center", maxWidth: 290 }}>
-          Create an account to post photos under your name, earn trophies, and track your contributions.
-        </div>
-      </div>
-      <Field label="Username" value={username} onChange={setUsername} placeholder="foggymcfogface" autoCapitalize="none" />
-      <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" autoCapitalize="none" />
-      <Field label="Password" value={pw} onChange={setPw} placeholder="••••••" type="password" />
-      {err && <div style={{ font: "12.5px var(--hand)", color: "#c8324b", textAlign: "center" }}>{err}</div>}
-      <button onClick={submit} style={{
-        marginTop: 2, cursor: "pointer", border: "none", background: "var(--accent)", color: "#fff",
-        padding: "14px", borderRadius: 13, font: "700 16px var(--hand)", boxShadow: "0 4px 14px color-mix(in srgb, var(--accent) 38%, transparent)" }}>
-        Create account
-      </button>
-      <div style={{ font: "10.5px/1.5 var(--mono)", color: "var(--ink)", opacity: 0.4, textAlign: "center", letterSpacing: 0.2 }}>
-        Demo only — your account is stored on this device, never sent anywhere.
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "26px 14px", textAlign: "center" }}>
+      <KarlMascot size={56} mood="sleepy" style={{ color: "var(--accent)" }} />
+      <ComingSoonPill />
+      <div style={{ font: "700 20px var(--hand)", color: "var(--ink)" }}>Accounts are on the way</div>
+      <div style={{ font: "13.5px/1.6 var(--hand)", color: "var(--ink)", opacity: 0.62, maxWidth: 290 }}>
+        Soon you'll be able to claim a username, post photos under your name, and track your contributions.
+        For now, you can still share today's view from any neighborhood — your photos post anonymously.
       </div>
     </div>
-  );
-}
-function Field({ label, value, onChange, placeholder, type = "text", autoCapitalize }) {
-  return (
-    <label style={{ display: "block" }}>
-      <div style={{ font: "600 11px var(--mono)", letterSpacing: 1, textTransform: "uppercase", color: "var(--ink)", opacity: 0.5, marginBottom: 5 }}>{label}</div>
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type} autoCapitalize={autoCapitalize}
-        style={{ width: "100%", boxSizing: "border-box", font: "500 15px var(--hand)", color: "var(--ink)",
-          background: "var(--card)", border: "1.5px solid color-mix(in srgb, var(--ink) 14%, transparent)",
-          borderRadius: 12, padding: "12px 13px", outline: "none" }} />
-    </label>
   );
 }
 function Stat({ label, value, big }) {
@@ -1634,9 +1598,9 @@ function Stat({ label, value, big }) {
 function ContributionsView({ account, contributions, onDelete, go }) {
   if (!account) {
     return (
-      <Gate go={go} icon={<GalleryIcon size={34} style={{ color: "var(--accent)" }} />}
-        title="Sign in to see your gallery"
-        body="Create an account to keep a history of every sky you've shared and the thanks you've earned." />
+      <Gate icon={<GalleryIcon size={34} style={{ color: "var(--accent)" }} />}
+        title="Your gallery is coming soon"
+        body="Once accounts arrive, you'll keep a history of every sky you've shared and the thanks you've earned." />
     );
   }
   const mine = contributions.filter(c => c.author === account.username);
@@ -1683,95 +1647,14 @@ function ContributionsView({ account, contributions, onDelete, go }) {
   );
 }
 
-// ── my trophies ─────────────────────────────────────────────────
-function TrophiesView({ account, go }) {
-  if (!account) {
-    return (
-      <Gate go={go} icon={<TrophyIcon size={34} style={{ color: "#c07e22" }} />}
-        title="Sign in to earn trophies"
-        body="Every photo you share bumps your level. Create an account to start your climb to Fog Overlord." />
-    );
-  }
-  const level = account.level || 0;
-  const tier = tierForLevel(level);
-  const idx = tier ? LEVEL_TIERS.indexOf(tier) : -1;
-  // progress to next tier
-  let progress = 0, toNext = null, nextTier = null;
-  if (!tier) { progress = 0; nextTier = LEVEL_TIERS[0]; toNext = 1 - level; }
-  else if (tier.max === Infinity) { progress = 1; }
-  else {
-    const span = tier.max - tier.min + 1;
-    progress = (level - tier.min + 1) / span;
-    nextTier = LEVEL_TIERS[idx + 1];
-    toNext = tier.max + 1 - level;
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "6px 2px" }}>
-      {/* current rank hero */}
-      <div style={{ textAlign: "center", background: "linear-gradient(160deg, color-mix(in srgb, #d6973a 18%, var(--card)), var(--card))",
-        border: "1.5px solid color-mix(in srgb, #d6973a 26%, transparent)", borderRadius: 20, padding: "22px 18px" }}>
-        <div style={{ fontSize: 56, lineHeight: 1 }}>{tier ? tier.emoji : "🌥️"}</div>
-        <div style={{ font: "800 23px var(--hand)", color: "var(--ink)", marginTop: 8 }}>{tier ? tier.name : "Fogless"}</div>
-        <div style={{ font: "13px var(--hand)", color: "var(--ink)", opacity: 0.62, marginTop: 3 }}>
-          {tier ? tier.blurb : "Share your first photo to reach Level 1."}
-        </div>
-        <div style={{ display: "inline-block", marginTop: 12, font: "700 13px var(--mono)", letterSpacing: 1,
-          background: "var(--ink)", color: "var(--paper)", padding: "5px 13px", borderRadius: 999 }}>LEVEL {level}</div>
-        {/* progress bar */}
-        <div style={{ marginTop: 14 }}>
-          <div style={{ height: 9, borderRadius: 999, background: "color-mix(in srgb, var(--ink) 12%, transparent)", overflow: "hidden" }}>
-            <div style={{ width: `${Math.round(progress * 100)}%`, height: "100%", borderRadius: 999,
-              background: "linear-gradient(90deg, #d6973a, #c07e22)", transition: "width .5s" }} />
-          </div>
-          <div style={{ font: "11.5px var(--hand)", color: "var(--ink)", opacity: 0.6, marginTop: 6 }}>
-            {tier && tier.max === Infinity ? "Maxed out. Karl bows to you." :
-              nextTier ? `${toNext} more photo${toNext === 1 ? "" : "s"} → ${nextTier.emoji} ${nextTier.name}` : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* all tiers */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        <SectionLabel>All ranks</SectionLabel>
-        {LEVEL_TIERS.map((t, i) => {
-          const reached = level >= t.min;
-          const current = tier === t;
-          return (
-            <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 13px", borderRadius: 14,
-              background: current ? "color-mix(in srgb, #d6973a 13%, var(--card))" : "var(--card)",
-              border: `1.5px solid ${current ? "color-mix(in srgb, #d6973a 38%, transparent)" : "color-mix(in srgb, var(--ink) 9%, transparent)"}`,
-              opacity: reached ? 1 : 0.5 }}>
-              <div style={{ fontSize: 26, filter: reached ? "none" : "grayscale(1)" }}>{t.emoji}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ font: "700 15px var(--hand)", color: "var(--ink)" }}>{t.name}</div>
-                <div style={{ font: "11.5px var(--mono)", letterSpacing: 0.4, color: "var(--ink)", opacity: 0.5 }}>
-                  Level {t.min}{t.max === Infinity ? "+" : `–${t.max}`}
-                </div>
-              </div>
-              {current && <span style={{ font: "700 10.5px var(--mono)", letterSpacing: 1, color: "#c07e22",
-                background: "color-mix(in srgb, #d6973a 20%, transparent)", padding: "4px 9px", borderRadius: 999 }}>YOU</span>}
-              {reached && !current && <span style={{ color: "#2f8f5e", font: "700 14px var(--hand)" }}>✓</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Gate({ icon, title, body, go }) {
+function Gate({ icon, title, body }) {
   return (
     <div style={{ textAlign: "center", padding: "34px 18px", color: "var(--ink)" }}>
       <div style={{ width: 70, height: 70, borderRadius: 999, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center",
         background: "color-mix(in srgb, var(--ink) 6%, transparent)" }}>{icon}</div>
       <div style={{ font: "700 18px var(--hand)" }}>{title}</div>
       <div style={{ font: "13px/1.5 var(--hand)", opacity: 0.62, marginTop: 6, maxWidth: 270, marginInline: "auto" }}>{body}</div>
-      <button onClick={() => go("account")} style={{
-        marginTop: 18, cursor: "pointer", border: "none", background: "var(--accent)", color: "#fff",
-        padding: "13px 22px", borderRadius: 999, font: "700 15px var(--hand)",
-        boxShadow: "0 4px 14px color-mix(in srgb, var(--accent) 38%, transparent)" }}>
-        Create an account
-      </button>
+      <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}><ComingSoonPill /></div>
     </div>
   );
 }
@@ -1780,7 +1663,7 @@ function Gate({ icon, title, body, go }) {
 function SettingsPanel({ open, onClose, account, onSave, onLogout, contributions, onDelete, narrow = false }) {
   const [view, setView] = useState("menu");
   useEffect(() => { if (open) setView("menu"); }, [open]);
-  const titles = { menu: "Settings", account: account ? "Account" : "Create Account", contributions: "My Contributions", trophies: "My Trophies" };
+  const titles = { menu: "Settings", account: account ? "Account" : "Accounts", contributions: "My Contributions" };
   const go = (v) => setView(v);
   const narrowStyle = narrow ? { top: 0, right: 0, bottom: 0, left: "auto", width: 360 } : { inset: 0 };
   return (
@@ -1792,21 +1675,20 @@ function SettingsPanel({ open, onClose, account, onSave, onLogout, contributions
       <PanelHead title={titles[view]} onBack={view === "menu" ? null : () => setView("menu")} onClose={onClose} />
       <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 14px calc(20px + env(safe-area-inset-bottom,0px))" }}>
         {view === "menu" && <SettingsMenu account={account} go={go} />}
-        {view === "account" && <AccountView account={account} onSave={onSave} onLogout={onLogout} />}
+        {view === "account" && <AccountView account={account} onLogout={onLogout} />}
         {view === "contributions" && <ContributionsView account={account} contributions={contributions} onDelete={onDelete} go={go} />}
-        {view === "trophies" && <TrophiesView account={account} go={go} />}
       </div>
     </div>
   );
 }
 
-Object.assign(window, { SettingsPanel, LEVEL_TIERS, tierForLevel, seedHelpful });
+Object.assign(window, { SettingsPanel, seedHelpful });
 
   </script>
 
   <script type="text/babel">
 /* KarlCheck — main app */
-const { useState, useRef, useEffect, useCallback } = React;
+const { useState, useRef, useEffect, useCallback, useMemo } = React;
 
 const MAP_W = 2744, MAP_H = 1568;
 
@@ -1817,8 +1699,9 @@ const PALETTES = {
   sunset:  ["#efe6da", "#f8f1e7", "#4a3326", "#c06a3b", "#d99463"],
 };
 
-// hoods that get a floating status badge on the map overview
-const BADGE_IDS = ["sunset","richmond","golden-gate-park","twin-peaks","marina","mission","bernal","fidi","southeast","noe-valley","presidio"];
+// YouTube iframes can't play from a file:// WebView (no referer → error 153), so
+// hoods with nativeEmbed:false fall back to poster + "Watch live ↗" in the app.
+const KC_IS_NATIVE = !!(window.__KC_NATIVE__ || window.ReactNativeWebView);
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -1863,8 +1746,11 @@ function loadAccount() {
 function loadContributions() {
   try { return JSON.parse(localStorage.getItem("kc-contributions") || "[]"); } catch (e) { return []; }
 }
-function loadLiked() {
-  try { return new Set(JSON.parse(localStorage.getItem("kc-liked") || "[]")); } catch (e) { return new Set(); }
+// community photos only live for a day — anything older is pruned from storage
+const KC_PHOTO_TTL_MS = 24 * 60 * 60 * 1000;
+function pruneContribs(list) {
+  const cutoff = Date.now() - KC_PHOTO_TTL_MS;
+  return list.filter(c => { const t = Date.parse(c.ts); return isFinite(t) && t > cutoff; });
 }
 // fun anonymous personas, themed to the neighborhood + stable per photo
 const KC_ROLES = ["Dog Walker", "Surfer", "Commuter", "Barista", "Stoop Sitter", "Fog Chaser",
@@ -1920,38 +1806,53 @@ function stampPhoto(file, hoodName, author, cb) {
   reader.readAsDataURL(file);
 }
 
-// OFFLINE community state: shows the neighbor-submitted photo, or a prompt to add one.
+// OFFLINE community state: shows the neighbor-submitted photo stack, or a prompt to add one.
+// Older photos sit behind the newest as a deck — tapping the photo cycles through them.
 // `fs` = fullscreen (roomy); otherwise sized to fit the 236px sheet tile.
-function OfflineCam({ hood, photo, onRequestPhoto, big, fs, contrib, liked, onLike }) {
+function OfflineCam({ hood, stack, onRequestPhoto, big, fs }) {
   const ask = (e) => { e.stopPropagation(); onRequestPhoto && onRequestPhoto(hood); };
+  const n = stack ? stack.length : 0;
+  const [idx, setIdx] = useState(0);
+  useEffect(() => { setIdx(0); }, [hood.id, n]);
+  const cur = n ? stack[Math.min(idx, n - 1)] : null;
 
-  if (photo) {
-    const credit = contrib ? (contrib.anon ? `by ${contrib.author}` : `by @${contrib.author}`) : null;
-    const likes = contrib ? (contrib.helpful || 0) : 0;
+  if (cur) {
+    const credit = cur.anon ? `by ${cur.author}` : `by @${cur.author}`;
+    const inset = big ? 14 : 10;
+    const cardStyle = { position: "absolute", inset, borderRadius: 12, objectFit: "cover",
+      background: "var(--ink)", boxShadow: "0 4px 14px rgba(0,0,0,0.35)" };
+    const cycle = (e) => { if (n > 1) { e.stopPropagation(); setIdx(i => (i + 1) % n); } };
     return (
       <React.Fragment>
-        <img src={photo.url} alt={`${hood.name} community view`} draggable="false"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        {n === 1 ? (
+          <img src={cur.url} alt={`${hood.name} community view`} draggable="false"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <React.Fragment>
+            {(n >= 3 ? [2, 1] : [1]).map(d => (
+              <img key={`behind-${d}`} src={stack[(idx + d) % n].url} alt="" draggable="false"
+                style={{ ...cardStyle, zIndex: 3 - d,
+                  transform: `rotate(${d % 2 ? -2.5 : 2.5}deg) translateY(${d * 2}px)` }} />
+            ))}
+            <img src={cur.url} alt={`${hood.name} community view`} draggable="false" onClick={cycle}
+              style={{ ...cardStyle, zIndex: 3, cursor: "pointer", transition: "transform .18s" }} />
+          </React.Fragment>
+        )}
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: big ? 92 : 70,
-          background: "linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.6))", pointerEvents: "none" }} />
-        {/* like + credit, bottom-left */}
+          background: "linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.6))", pointerEvents: "none", zIndex: 4 }} />
+        {/* timestamp + credit, bottom-left — always for the visible card */}
         <div style={{ position: "absolute", left: 10, bottom: 10, zIndex: 5, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-          {contrib && onLike && (
-            <button onClick={(e) => { e.stopPropagation(); onLike(contrib.id); }} style={{
-              display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", border: "none",
-              background: liked ? "var(--accent)" : "rgba(0,0,0,0.46)", color: "#fff",
-              padding: big ? "8px 13px" : "6px 10px", borderRadius: 999, backdropFilter: "blur(4px)",
-              font: `700 ${big ? 13 : 11.5}px var(--hand)`, transition: "background .18s" }}>
-              <HeartIcon size={big ? 16 : 14} filled={liked} /> {likes}
-            </button>
-          )}
-          {credit && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, font: `600 ${big ? 12 : 10.5}px var(--hand)`,
-              color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6)", maxWidth: big ? 280 : 180 }}>
-              <CameraIcon size={big ? 14 : 12} style={{ color: "#fff", opacity: 0.9, flexShrink: 0 }} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{credit}</span>
-            </div>
-          )}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6,
+            background: "rgba(0,0,0,0.46)", color: "#fff",
+            padding: big ? "8px 13px" : "6px 10px", borderRadius: 999, backdropFilter: "blur(4px)",
+            font: `700 ${big ? 13 : 11.5}px var(--hand)` }}>
+            {photoStamp(cur.ts)}{n > 1 ? ` · ${Math.min(idx, n - 1) + 1}/${n}` : ""}
+          </div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, font: `600 ${big ? 12 : 10.5}px var(--hand)`,
+            color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.6)", maxWidth: big ? 280 : 180 }}>
+            <CameraIcon size={big ? 14 : 12} style={{ color: "#fff", opacity: 0.9, flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{credit}</span>
+          </div>
         </div>
         <button onClick={ask} style={{
           position: "absolute", bottom: 10, right: 10, zIndex: 5, cursor: "pointer",
@@ -1984,14 +1885,52 @@ function OfflineCam({ hood, photo, onRequestPhoto, big, fs, contrib, liked, onLi
   );
 }
 
+// Windy cams are still-image webcams, not video — its embed player waits for a
+// tap to animate. We skip that chrome and show the live frame ourselves, quietly
+// refreshing it so fog visibly updates (preload-then-swap to avoid flicker).
+function windyCamId(url) {
+  const m = /webcams\.windy\.com\/.*\/player\/(\d+)/.exec(url || "");
+  return m && m[1];
+}
+// "live" = real video stream (iframe feed) · "snapshot" = a refreshing still
+// image (Windy still-cams) · "offline" = no feed. Drives the badge wording so we
+// never call a still photo "LIVE".
+function camKind(hood) {
+  if (!hood || !hood.liveUrl) return "offline";
+  return windyCamId(hood.embedUrl || hood.liveUrl) ? "snapshot" : "live";
+}
+function WindyCam({ id, host, fit = "cover" }) {
+  const url = (n) => `https://imgproxy.windy.com/_/full/plain/current/${id}/original.jpg?t=${n}`;
+  const [src, setSrc] = useState(() => url(0));
+  useEffect(() => {
+    let alive = true, n = 0;
+    setSrc(url(0));
+    const tick = setInterval(() => {
+      n += 1;
+      const next = url(n), pre = new Image();
+      pre.onload = () => { if (alive) setSrc(next); };
+      pre.src = next;
+    }, 25000);
+    return () => { alive = false; clearInterval(tick); };
+  }, [id]);
+  return (
+    <img src={src} alt={`Live cam — ${host}`} draggable="false"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: fit, background: "#000" }} />
+  );
+}
+
 // ── live window-cam placeholder ────────────────────────────────
-function CamPlaceholder({ host, height = 168, big = false, onExpand, liveUrl, embedUrl, embed = true, poster, hood, photo, onRequestPhoto, contrib, liked, onLike }) {
-  const embeddable = embedUrl || (liveUrl && embed !== false);
+function CamPlaceholder({ host, height = 168, big = false, onExpand, liveUrl, embedUrl, embed = true, poster, hood, stack, onRequestPhoto }) {
+  const nativeBlocked = KC_IS_NATIVE && hood && hood.nativeEmbed === false;
+  const embeddable = !nativeBlocked && (embedUrl || (liveUrl && embed !== false));
   const frameSrc = embedUrl || liveUrl;
-  const linkOnly = liveUrl && embed === false && !embedUrl;
+  const windyId = embeddable ? windyCamId(frameSrc) : null;
+  const linkOnly = !!liveUrl && !embeddable;
   const offline = !liveUrl;
-  const isLive = embeddable || linkOnly;
-  const badgeText = isLive ? "LIVE" : (photo ? "COMMUNITY" : "OFFLINE");
+  const hasPhoto = !!(stack && stack.length);
+  const still = !!windyId;                               // refreshing snapshot, not video
+  const isLive = (embeddable && !still) || linkOnly;     // real live video feed
+  const badgeText = isLive ? "LIVE" : still ? "SNAPSHOT" : (hasPhoto ? "COMMUNITY" : "OFFLINE");
   return (
     <div onClick={onExpand} style={{
       position: "relative", height, borderRadius: 14, overflow: "hidden",
@@ -2000,10 +1939,13 @@ function CamPlaceholder({ host, height = 168, big = false, onExpand, liveUrl, em
       border: "1.5px solid color-mix(in srgb, var(--ink) 30%, transparent)",
       cursor: onExpand ? "pointer" : "default",
     }}>
-      {embeddable && (
-        <iframe src={frameSrc} title={`Live cam — ${host}`} scrolling="no" allow="autoplay"
+      {embeddable && (windyId ? (
+        <WindyCam id={windyId} host={host} />
+      ) : (
+        <iframe src={frameSrc} title={`Live cam — ${host}`} scrolling="no"
+          allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} />
-      )}
+      ))}
       {linkOnly && poster && (
         <img src={poster} alt={`${host} preview`} draggable="false"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.55 }} />
@@ -2021,15 +1963,16 @@ function CamPlaceholder({ host, height = 168, big = false, onExpand, liveUrl, em
           <div style={{ font: `${big ? 12 : 10.5}px var(--mono)`, letterSpacing: 0.8, color: "rgba(255,255,255,0.92)" }}>opens {host}</div>
         </div>
       )}
-      {offline && <OfflineCam hood={hood} photo={photo} onRequestPhoto={onRequestPhoto} big={big} fs={false} contrib={contrib} liked={liked} onLike={onLike} />}
+      {offline && <OfflineCam hood={hood} stack={stack} onRequestPhoto={onRequestPhoto} big={big} fs={false} />}
       {/* transparent layer so a tap expands instead of interacting with the feed */}
       {embeddable && onExpand && <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} />}
-      <div className="kc-shimmer" />
+      {/* loading shimmer only over the empty placeholder — never over a live feed */}
+      {!embeddable && !linkOnly && <div className="kc-shimmer" />}
       <div style={{ position: "absolute", top: 10, left: 10, display: "flex", alignItems: "center", gap: 6,
         background: "rgba(0,0,0,0.34)", padding: "4px 9px", borderRadius: 999, backdropFilter: "blur(3px)" }}>
         {isLive
           ? <span className="kc-livedot" />
-          : <span style={{ width: 7, height: 7, borderRadius: 999, background: photo ? "#5fb88e" : "rgba(255,255,255,0.45)" }} />}
+          : <span style={{ width: 7, height: 7, borderRadius: 999, background: still ? "#e0a64b" : hasPhoto ? "#5fb88e" : "rgba(255,255,255,0.45)" }} />}
         <span style={{ font: "600 11px var(--mono)", letterSpacing: 1.2, color: "#fff" }}>{badgeText}</span>
       </div>
       {onExpand && (
@@ -2122,10 +2065,13 @@ function AdSlot() {
 }
 
 // ── detail: live cam + ad only ─────────────────────────────────
-function SheetBody({ hood, onExpand, photo, onRequestPhoto, contrib, liked, onLike }) {
-  const isLive = !!hood.liveUrl;
-  const tag = isLive ? "LIVE" : (photo ? "COMMUNITY" : "OFFLINE");
-  const tagColor = isLive ? "#e0445b" : (photo ? "#3f9c72" : "color-mix(in srgb, var(--ink) 45%, transparent)");
+function SheetBody({ hood, onExpand, stack, onRequestPhoto }) {
+  const kind = camKind(hood);
+  const isLive = kind === "live";
+  const still = kind === "snapshot";
+  const hasPhoto = !!(stack && stack.length);
+  const tag = isLive ? "LIVE" : still ? "SNAPSHOT" : (hasPhoto ? "COMMUNITY" : "OFFLINE");
+  const tagColor = isLive ? "#e0445b" : still ? "#c08a2e" : (hasPhoto ? "#3f9c72" : "color-mix(in srgb, var(--ink) 45%, transparent)");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 9 }}>
@@ -2133,17 +2079,17 @@ function SheetBody({ hood, onExpand, photo, onRequestPhoto, contrib, liked, onLi
         <div style={{ display: "flex", alignItems: "center", gap: 5, font: "600 10px var(--mono)", letterSpacing: 1, color: tagColor }}>
           {isLive
             ? <span className="kc-livedot" />
-            : <span style={{ width: 6, height: 6, borderRadius: 999, background: photo ? "#3f9c72" : "color-mix(in srgb, var(--ink) 35%, transparent)" }} />}
+            : <span style={{ width: 6, height: 6, borderRadius: 999, background: still ? "#e0a64b" : hasPhoto ? "#3f9c72" : "color-mix(in srgb, var(--ink) 35%, transparent)" }} />}
           {tag}
         </div>
       </div>
-      <CamPlaceholder host={hood.host} height={236} big onExpand={() => onExpand(hood)} liveUrl={hood.liveUrl} embedUrl={hood.embedUrl} embed={hood.embed} poster={hood.poster} hood={hood} photo={photo} onRequestPhoto={onRequestPhoto} contrib={contrib} liked={liked} onLike={onLike} />
+      <CamPlaceholder host={hood.host} height={236} big onExpand={() => onExpand(hood)} liveUrl={hood.liveUrl} embedUrl={hood.embedUrl} embed={hood.embed} poster={hood.poster} hood={hood} stack={stack} onRequestPhoto={onRequestPhoto} />
       <AdSlot />
     </div>
   );
 }
 
-function BottomSheet({ hood, onClose, onExpand, photo, onRequestPhoto, contrib, liked, onLike }) {
+function BottomSheet({ hood, onClose, onExpand, stack, onRequestPhoto }) {
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 80, pointerEvents: hood ? "auto" : "none" }}>
       <div onClick={onClose} style={{
@@ -2160,49 +2106,48 @@ function BottomSheet({ hood, onClose, onExpand, photo, onRequestPhoto, contrib, 
         <div style={{ display: "flex", justifyContent: "center", paddingBottom: 12 }}>
           <div style={{ width: 38, height: 5, borderRadius: 9, background: "color-mix(in srgb, var(--ink) 22%, transparent)" }} />
         </div>
-        {hood && <SheetBody hood={hood} onExpand={onExpand} photo={photo} onRequestPhoto={onRequestPhoto} contrib={contrib} liked={liked} onLike={onLike} />}
+        {hood && <SheetBody hood={hood} onExpand={onExpand} stack={stack} onRequestPhoto={onRequestPhoto} />}
       </div>
     </div>
   );
 }
 
-// ── floating status badge on the map ───────────────────────────
-function MapBadge({ hood, x, y, selected, onTap }) {
-  const tval = hood.temp;
-  return (
-    <button onClick={onTap} className="kc-badge" style={{
-      position: "absolute", left: x, top: y, transform: "translate(-50%,-50%)",
-      display: "flex", alignItems: "center", gap: 5, padding: "4px 9px 4px 5px",
-      borderRadius: 999, border: "1.5px solid color-mix(in srgb, var(--ink) 18%, transparent)",
-      background: selected ? "var(--accent)" : "var(--card)",
-      color: selected ? "var(--card)" : "var(--ink)",
-      boxShadow: "0 3px 9px rgba(0,0,0,0.16)", cursor: "pointer", zIndex: selected ? 30 : 20,
-      transition: "background .2s, transform .2s" }}>
-      <WeatherIcon status={hood.status} size={20} sw={2.4} rough={false} />
-      <span style={{ font: "700 13px var(--hand)", lineHeight: 1 }}>{tval}°</span>
-    </button>
-  );
-}
-
 // ── fullscreen live-cam view ───────────────────────────────────
-function FullscreenCam({ hood, onMinimize, onClose, photo, onRequestPhoto, contrib, liked, onLike }) {
+function FullscreenCam({ hood, onMinimize, onClose, stack, onRequestPhoto }) {
   const open = !!hood;
-  const isLive = hood && !!hood.liveUrl;
-  const badgeText = !hood ? "" : (isLive ? "LIVE" : (photo ? "COMMUNITY" : "OFFLINE"));
+  const kind = camKind(hood);
+  const isLive = kind === "live";
+  const still = kind === "snapshot";
+  const hasFeed = isLive || still;
+  const hasPhoto = !!(stack && stack.length);
+  const nativeBlocked = KC_IS_NATIVE && hood && hood.nativeEmbed === false;
+  const fsEmbeddable = !!(hood && hood.liveUrl && !nativeBlocked && (hood.embedUrl || hood.embed !== false));
+  const fsLinkOnly = !!(hood && hood.liveUrl) && !fsEmbeddable;
+  const badgeText = !hood ? "" : (isLive ? "LIVE" : still ? "SNAPSHOT" : (hasPhoto ? "COMMUNITY" : "OFFLINE"));
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 200, pointerEvents: open ? "auto" : "none",
       opacity: open ? 1 : 0, transition: "opacity .28s", background: "var(--ink)" }}>
       {hood && (
         <div style={{ position: "absolute", inset: 0, overflow: "hidden",
           backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 14px, rgba(255,255,255,0.11) 14px 28px)" }}>
-          <div className="kc-shimmer" />
+          {/* shimmer only over the empty/offline backdrop, never over a feed */}
+          {!hasFeed && <div className="kc-shimmer" />}
 
-          {hood.liveUrl && (hood.embedUrl || hood.embed !== false) && (
-            <iframe src={hood.embedUrl || hood.liveUrl} title={`Live cam — ${hood.host}`}
-              allow="autoplay"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none", background: "#000" }} />
+          {fsEmbeddable && (
+            // center the feed instead of stretching the embed page over the whole screen
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {windyCamId(hood.embedUrl || hood.liveUrl) ? (
+                <div style={{ width: "100%", aspectRatio: "16 / 9", maxHeight: "100%", position: "relative", background: "#000" }}>
+                  <WindyCam id={windyCamId(hood.embedUrl || hood.liveUrl)} host={hood.host} fit="contain" />
+                </div>
+              ) : (
+                <iframe src={hood.embedUrl || hood.liveUrl} title={`Live cam — ${hood.host}`}
+                  allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen scrolling="no"
+                  style={{ width: "100%", aspectRatio: "16 / 9", maxHeight: "100%", border: "none", background: "#000" }} />
+              )}
+            </div>
           )}
-          {hood.liveUrl && hood.embed === false && !hood.embedUrl && (
+          {fsLinkOnly && (
             <div style={{ position: "absolute", inset: 0 }}>
               {hood.poster && (
                 <img src={hood.poster} alt={`${hood.host} preview`} draggable="false"
@@ -2230,7 +2175,7 @@ function FullscreenCam({ hood, onMinimize, onClose, photo, onRequestPhoto, contr
             background: "rgba(0,0,0,0.4)", padding: "6px 12px", borderRadius: 999, backdropFilter: "blur(4px)" }}>
             {isLive
               ? <span className="kc-livedot" />
-              : <span style={{ width: 7, height: 7, borderRadius: 999, background: photo ? "#5fb88e" : "rgba(255,255,255,0.45)" }} />}
+              : <span style={{ width: 7, height: 7, borderRadius: 999, background: still ? "#e0a64b" : hasPhoto ? "#5fb88e" : "rgba(255,255,255,0.45)" }} />}
             <span style={{ font: "600 12px var(--mono)", letterSpacing: 1.4, color: "#fff" }}>{badgeText}</span>
           </div>
 
@@ -2252,7 +2197,7 @@ function FullscreenCam({ hood, onMinimize, onClose, photo, onRequestPhoto, contr
 
           {/* center: offline community state (when no live feed) */}
           {!hood.liveUrl && (
-            <OfflineCam hood={hood} photo={photo} onRequestPhoto={onRequestPhoto} big fs contrib={contrib} liked={liked} onLike={onLike} />
+            <OfflineCam hood={hood} stack={stack} onRequestPhoto={onRequestPhoto} big fs />
           )}
 
           {/* bottom caption */}
@@ -2268,7 +2213,7 @@ function FullscreenCam({ hood, onMinimize, onClose, photo, onRequestPhoto, contr
                 Open live feed ↗
               </a>
             ) : (
-              <span>{photo ? "neighbor photo" : "awaiting a neighbor's photo"}</span>
+              <span>{hasPhoto ? "neighbor photo" : "awaiting a neighbor's photo"}</span>
             )}
             <span>tap ⤡ to shrink · ✕ to close</span>
           </div>
@@ -2276,6 +2221,11 @@ function FullscreenCam({ hood, onMinimize, onClose, photo, onRequestPhoto, contr
       )}
     </div>
   );
+}
+
+// absolute stamp for the photo pill, e.g. "Jun 8, 2:45 PM"
+function photoStamp(iso) {
+  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 // relative time for community photos, e.g. "12m ago"
@@ -2291,11 +2241,14 @@ function timeAgo(iso) {
 
 // small freshness badge pinned to a neighborhood on the map
 function MapStatusBadge({ hood, photo, x, y }) {
-  const isLive = !!hood.liveUrl;
+  const kind = camKind(hood);
   let dot, label, fg;
-  if (isLive) {
+  if (kind === "live") {
     dot = <span style={{ width: 5, height: 5, borderRadius: 999, background: "#e0445b" }} className="kc-livedot" />;
     label = "LIVE"; fg = "#c8324b";
+  } else if (kind === "snapshot") {
+    dot = <span style={{ width: 5, height: 5, borderRadius: 999, background: "#e0a64b" }} />;
+    label = "SNAPSHOT"; fg = "#c08a2e";
   } else if (photo) {
     dot = <CameraIcon size={8} sw={2.4} style={{ color: "#2f8f5e" }} />;
     label = timeAgo(photo.ts); fg = "#2f8f5e";
@@ -2319,7 +2272,7 @@ function MapStatusBadge({ hood, photo, x, y }) {
 function SharePopover({ open, onClose }) {
   const inputRef = useRef(null);
   const [copied, setCopied] = useState(false);
-  const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app';
+  const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app/get';
   useEffect(() => {
     if (open) {
       setCopied(false);
@@ -2502,15 +2455,29 @@ function App({ isDesktop = false }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [account, setAccount] = useState(loadAccount);
-  const [contributions, setContributions] = useState(loadContributions);
-  const [photos, setPhotos] = useState(loadPhotos);
-  const [liked, setLiked] = useState(loadLiked);
+  // photos expire after 24h — prune on load (write back only if something aged out,
+  // so the kc-photos → kc-contributions migration below still sees a null key)
+  const [contributions, setContributions] = useState(() => {
+    const raw = loadContributions();
+    const fresh = pruneContribs(raw);
+    if (fresh.length !== raw.length) { try { localStorage.setItem("kc-contributions", JSON.stringify(fresh)); } catch (e) {} }
+    return fresh;
+  });
   const [captureHood, setCaptureHood] = useState(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const fileInputRef = useRef(null);
+  // native app: getUserMedia is unreliable in a file:// WebView, so "Take a Photo"
+  // uses a capture-enabled file input there — it opens the real system camera.
+  const cameraInputRef = useRef(null);
+  const takePhoto = () => {
+    if (window.ReactNativeWebView || window.__KC_NATIVE__) {
+      if (cameraInputRef.current) cameraInputRef.current.click();
+    } else {
+      setCameraOpen(true);
+    }
+  };
 
   const persistContribs = (next) => { try { localStorage.setItem("kc-contributions", JSON.stringify(next)); } catch (e) {} return next; };
-  const persistPhotos = (next) => { try { localStorage.setItem("kc-photos", JSON.stringify(next)); } catch (e) {} return next; };
 
   // one-time migration: seed the contributions log from any pre-existing photos
   useEffect(() => {
@@ -2519,16 +2486,26 @@ function App({ isDesktop = false }) {
     const ids = Object.keys(existing);
     if (!ids.length) return;
     const author = (loadAccount() && loadAccount().username) || "You";
-    const seeded = [], nextPhotos = { ...existing };
+    const seeded = [];
     ids.forEach((hid, i) => {
       const h = (window.KARL_HOODS || []).find(x => x.id === hid);
       const cid = `c_${Date.parse(existing[hid].ts) || Date.now()}_${i}`;
       seeded.push({ id: cid, hoodId: hid, hoodName: h ? h.name : hid, url: existing[hid].url,
         ts: existing[hid].ts, helpful: seedHelpful(cid), author });
-      nextPhotos[hid] = { ...existing[hid], cid };
     });
-    setContributions(persistContribs(seeded));
-    setPhotos(persistPhotos(nextPhotos));
+    setContributions(persistContribs(pruneContribs(seeded)));
+    try { localStorage.removeItem("kc-photos"); } catch (e) {}
+  }, []);
+
+  // photos crossing the 24h line while the app stays open disappear live
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setContributions(prev => {
+        const fresh = pruneContribs(prev);
+        return fresh.length === prev.length ? prev : persistContribs(fresh);
+      });
+    }, 60000);
+    return () => clearInterval(tick);
   }, []);
 
   const saveAccount = useCallback((acct) => {
@@ -2550,38 +2527,11 @@ function App({ isDesktop = false }) {
     const author = loggedIn ? acct.username : personaFor(hood.name, cid);
     stampPhoto(file, hood.name, loggedIn ? author : null, (url, ts) => {
       setContributions(prev => persistContribs([...prev, { id: cid, hoodId: hood.id, hoodName: hood.name, url, ts, helpful: 0, author, anon: !loggedIn }]));
-      setPhotos(prev => persistPhotos({ ...prev, [hood.id]: { url, ts, cid } }));
-    });
-  }, []);
-
-  const toggleLike = useCallback((cid) => {
-    setLiked(prevSet => {
-      const has = prevSet.has(cid);
-      const nextSet = new Set(prevSet);
-      has ? nextSet.delete(cid) : nextSet.add(cid);
-      try { localStorage.setItem("kc-liked", JSON.stringify([...nextSet])); } catch (e) {}
-      setContributions(prev => persistContribs(prev.map(c => c.id === cid ? { ...c, helpful: Math.max(0, (c.helpful || 0) + (has ? -1 : 1)) } : c)));
-      return nextSet;
     });
   }, []);
 
   const deleteContribution = useCallback((cid) => {
-    setContributions(prev => {
-      const removed = prev.find(c => c.id === cid);
-      const next = prev.filter(c => c.id !== cid);
-      if (removed) {
-        setPhotos(pp => {
-          if (!pp[removed.hoodId] || pp[removed.hoodId].cid !== cid) return pp;
-          // promote the most recent remaining contribution for that hood, if any
-          const rest = next.filter(c => c.hoodId === removed.hoodId);
-          const np = { ...pp };
-          if (rest.length) { const last = rest[rest.length - 1]; np[removed.hoodId] = { url: last.url, ts: last.ts, cid: last.id }; }
-          else delete np[removed.hoodId];
-          return persistPhotos(np);
-        });
-      }
-      return persistContribs(next);
-    });
+    setContributions(prev => persistContribs(prev.filter(c => c.id !== cid)));
   }, []);
 
   const myCount = account ? contributions.filter(c => c.author === account.username).length : 0;
@@ -2595,10 +2545,14 @@ function App({ isDesktop = false }) {
     e.target.value = "";
     setCaptureHood(null);
   };
-  const contribForHood = (hid) => {
-    const p = photos[hid];
-    return p && p.cid ? contributions.find(c => c.id === p.cid) : null;
-  };
+  // newest-first photo stacks per neighborhood, derived from the contributions log
+  const stacks = useMemo(() => {
+    const m = {};
+    for (const c of contributions) (m[c.hoodId] = m[c.hoodId] || []).push(c);
+    for (const k in m) m[k].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+    return m;
+  }, [contributions]);
+  const stackForHood = (hid) => (hid && stacks[hid]) || [];
 
 
   const selHood = hoods.find(h => h.id === sel) || null;
@@ -2747,6 +2701,11 @@ function App({ isDesktop = false }) {
   const sy = (h) => view.ty + (h.y / 100) * MAP_H * view.scale;
   const onScreen = (x, y, m = 60) => x > -m && x < stage.w + m && y > -m && y < stage.h + m;
 
+  // status badges are glued to a fixed image-space point above each hood, so they
+  // track the map exactly while zooming; nudges de-overlap neighboring badges
+  const BADGE_NUDGE = { soma: 20, fidi: 20, richmond: 20, sunset: -40 };
+  const badgeY = (h) => view.ty + ((h.y / 100) * MAP_H - 84 + (BADGE_NUDGE[h.id] || 0)) * view.scale;
+
   const select = (id) => { if (!movedRef.current) setSel(id); };
 
   const rootStyle = {
@@ -2776,8 +2735,13 @@ function App({ isDesktop = false }) {
           <span className="kc-livedot" />LIVE
         </div>
         <button onPointerDown={e => e.stopPropagation()} onClick={async () => {
-          const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app';
+          const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app/get';
           const shareData = { title: "KarlCheck", text: "KarlCheck — fog, verified by your neighbors.", url };
+          if (window.ReactNativeWebView) {
+            // native app: use the real iOS/Android share sheet (handled in App.js)
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "share", ...shareData }));
+            return;
+          }
           if (navigator.share) { try { await navigator.share(shareData); return; } catch (err) { if (err?.name === "AbortError") return; } }
           setShareOpen(true);
         }} style={{ display: "flex", alignItems: "center", gap: 6,
@@ -2805,20 +2769,15 @@ function App({ isDesktop = false }) {
             onWheel={onWheel} onPointerLeave={() => setHoverId(null)}
             style={{ position: "absolute", inset: 16, borderRadius: 18, overflow: "hidden",
               background: "#f4f1e9", boxShadow: "inset 0 0 0 1.5px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.07)",
-              cursor: dragRef.current ? "grabbing" : (hoverId ? "pointer" : "grab"), touchAction: "pan-y" }}>
+              cursor: dragRef.current ? "grabbing" : (hoverId ? "pointer" : "grab"), touchAction: "none" }}>
             <div style={{ position: "absolute", left: 0, top: 0, width: MAP_W, height: MAP_H,
               transform: `translate(${view.tx}px,${view.ty}px) scale(${view.scale})`, transformOrigin: "0 0", pointerEvents: "none" }}>
-              <SFMap selId={sel} hoverId={hoverId} />
+              <SFMap />
             </div>
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-              {hoods.filter(h => h.liveUrl).map(h => {
-                const nudge = { soma: 20, fidi: 20, richmond: 20, sunset: -40 }[h.id] || 0;
-                const bx = view.tx + (h.x / 100) * MAP_W * view.scale;
-                const by = view.ty + ((h.y / 100) * MAP_H - 84 + nudge) * view.scale;
-                return onScreen(bx, by) && (
-                  <MapStatusBadge key={h.id} hood={h} photo={photos[h.id]} x={bx} y={by} />
-                );
-              })}
+              {hoods.filter(h => h.liveUrl).map(h => onScreen(sx(h), badgeY(h)) && (
+                <MapStatusBadge key={h.id} hood={h} photo={stackForHood(h.id)[0]} x={sx(h)} y={badgeY(h)} />
+              ))}
               {selHood && onScreen(sx(selHood), sy(selHood)) && (
                 <div style={{ position: "absolute", left: sx(selHood), top: sy(selHood) - 42,
                   transform: "translate(-50%,0)", background: "var(--ink)", color: "var(--paper)",
@@ -2853,10 +2812,7 @@ function App({ isDesktop = false }) {
               </div>
               <div style={{ padding: "16px 18px 32px" }}>
                 <SheetBody hood={selHood} onExpand={setFullCam}
-                  photo={photos[selHood.id]} onRequestPhoto={requestPhoto}
-                  contrib={contribForHood(selHood.id)}
-                  liked={photos[selHood.id] && liked.has(photos[selHood.id].cid)}
-                  onLike={toggleLike} />
+                  stack={stackForHood(selHood.id)} onRequestPhoto={requestPhoto} />
               </div>
             </>
           ) : <SidebarEmpty />}
@@ -2865,12 +2821,11 @@ function App({ isDesktop = false }) {
 
       {/* overlays */}
       <FullscreenCam hood={fullCam} onMinimize={() => setFullCam(null)} onClose={() => { setFullCam(null); setSel(null); }}
-        photo={fullCam && photos[fullCam.id]} onRequestPhoto={requestPhoto}
-        contrib={fullCam && contribForHood(fullCam.id)} liked={fullCam && photos[fullCam.id] && liked.has(photos[fullCam.id].cid)}
-        onLike={toggleLike} />
+        stack={fullCam ? stackForHood(fullCam.id) : []} onRequestPhoto={requestPhoto} />
       <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onFilePicked} style={{ display: "none" }} />
       <CaptureChooser open={!!captureHood && !cameraOpen} hoodName={captureHood && captureHood.name}
-        onClose={() => setCaptureHood(null)} onTakePhoto={() => setCameraOpen(true)}
+        onClose={() => setCaptureHood(null)} onTakePhoto={takePhoto}
         onUpload={() => fileInputRef.current && fileInputRef.current.click()} />
       <CameraModal open={cameraOpen} hoodName={captureHood && captureHood.name}
         onClose={() => setCameraOpen(false)}
@@ -2925,22 +2880,19 @@ function App({ isDesktop = false }) {
           onPointerLeave={() => setHoverId(null)}
           style={{ position: "absolute", inset: 0, borderRadius: 22, overflow: "hidden",
             background: "#f4f1e9", boxShadow: "inset 0 0 0 1.5px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.07)",
-            cursor: dragRef.current ? "grabbing" : (hoverId ? "pointer" : "grab"), touchAction: "pan-y" }}>
+            cursor: dragRef.current ? "grabbing" : (hoverId ? "pointer" : "grab"), touchAction: "none" }}>
           {/* transformed map (original vector illustration) */}
           <div style={{ position: "absolute", left: 0, top: 0, width: MAP_W, height: MAP_H,
             transform: `translate(${view.tx}px,${view.ty}px) scale(${view.scale})`, transformOrigin: "0 0", pointerEvents: "none" }}>
-            <SFMap selId={sel} hoverId={hoverId} />
+            <SFMap />
           </div>
 
           {/* overlay: selected name pill + status badges */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            {/* status badges — neighborhoods with a live cam (per-hood vertical nudges in image space) */}
-            {hoods.filter(h => h.liveUrl).map(h => {
-              const dy = { soma: 20, fidi: 20, richmond: 20, sunset: -40 }[h.id] || 0;
-              return onScreen(sx(h), sy(h)) && (
-                <MapStatusBadge key={h.id} hood={h} photo={photos[h.id]} x={sx(h)} y={sy(h) - 32 + dy} />
-              );
-            })}
+            {/* status badges — neighborhoods with a live cam */}
+            {hoods.filter(h => h.liveUrl).map(h => onScreen(sx(h), badgeY(h)) && (
+              <MapStatusBadge key={h.id} hood={h} photo={stackForHood(h.id)[0]} x={sx(h)} y={badgeY(h)} />
+            ))}
             {selHood && onScreen(sx(selHood), sy(selHood)) && (
               <div style={{ position: "absolute", left: sx(selHood), top: sy(selHood) - 42,
                 transform: "translate(-50%,0)", background: "var(--ink)", color: "var(--paper)",
@@ -2962,8 +2914,13 @@ function App({ isDesktop = false }) {
           {/* share app */}
           <button onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={async (e) => {
             e.stopPropagation();
-            const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app';
+            const url = window.__KC_SHARE_URL__ || 'https://karlcheck.app/get';
             const shareData = { title: "KarlCheck", text: "KarlCheck — fog, verified by your neighbors.", url };
+            if (window.ReactNativeWebView) {
+              // native app: use the real iOS/Android share sheet (handled in App.js)
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: "share", ...shareData }));
+              return;
+            }
             const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
             if (navigator.share && !framed) {
               try { await navigator.share(shareData); return; }
@@ -2989,20 +2946,17 @@ function App({ isDesktop = false }) {
       </div>
 
       <BottomSheet hood={selHood} onClose={() => setSel(null)} onExpand={setFullCam}
-        photo={selHood && photos[selHood.id]} onRequestPhoto={requestPhoto}
-        contrib={selHood && contribForHood(selHood.id)} liked={selHood && photos[selHood.id] && liked.has(photos[selHood.id].cid)}
-        onLike={toggleLike} />
+        stack={selHood ? stackForHood(selHood.id) : []} onRequestPhoto={requestPhoto} />
 
       <FullscreenCam hood={fullCam} onMinimize={() => setFullCam(null)} onClose={() => { setFullCam(null); setSel(null); }}
-        photo={fullCam && photos[fullCam.id]} onRequestPhoto={requestPhoto}
-        contrib={fullCam && contribForHood(fullCam.id)} liked={fullCam && photos[fullCam.id] && liked.has(photos[fullCam.id].cid)}
-        onLike={toggleLike} />
+        stack={fullCam ? stackForHood(fullCam.id) : []} onRequestPhoto={requestPhoto} />
 
       {/* hidden upload input + capture chooser + webcam */}
       <input ref={fileInputRef} type="file" accept="image/*" onChange={onFilePicked} style={{ display: "none" }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onFilePicked} style={{ display: "none" }} />
       <CaptureChooser open={!!captureHood && !cameraOpen} hoodName={captureHood && captureHood.name}
         onClose={() => setCaptureHood(null)}
-        onTakePhoto={() => setCameraOpen(true)}
+        onTakePhoto={takePhoto}
         onUpload={() => fileInputRef.current && fileInputRef.current.click()} />
       <CameraModal open={cameraOpen} hoodName={captureHood && captureHood.name}
         onClose={() => setCameraOpen(false)}
